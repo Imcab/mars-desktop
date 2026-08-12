@@ -1,0 +1,66 @@
+:root {
+  /* =========================================
+     MARS FRAMEWORK - COLOR PALETTE (DARK MODE)
+  ========================================= */
+  
+  /* Fondos (Backgrounds) */
+  --bg-app: #151413;          /* Fondo base de la app (Súper oscuro) */
+  --bg-page: #1a1918;         /* Fondo de las páginas interiores */
+  --bg-panel: #242220;        /* Tarjetas, inputs y paneles limpios (Gris medio) */
+  --bg-toolbar: #1b1b1e;      /* Barra de herramientas (Ribbon) */
+  --bg-menubar: #0a1483;      /* Barra de menú superior */
+  --bg-input: #0f0e0d;        /* Cajas de texto y QR (Casi negro para contraste) */
+  --bg-dark: #0a0909;         /* Barra de título y barra de estado */
+  
+  /* Textos (Typography) */
+  --text-primary: #e8e6e1;    /* Títulos y texto principal (Blanco suave/Hueso) */
+  --text-secondary: #aaa6a0;  /* Subtítulos y descripciones */
+  --text-muted: #807d78;      /* Labels, placeholders y texto secundario */
+  --text-light: #555350;      /* Texto inactivo o apagado */
+  
+  /* Bordes (Borders) */
+  --border-light: #2c2a28;    /* Tablas y separadores muy sutiles */
+  --border-main: #383532;     /* Bordes de tarjetas e inputs */
+  --border-dark: #4a4642;     /* Separadores de ToolBar y MenuBar */
+  
+  /* Acentos y Marca (Brand & Accents) */
+  --mars-red: #a83c3c;        /* Botones principales (Ligeramente más brillante para contraste) */
+  --mars-accent: #6278f1;
+  --mars-grey: #656566;
+  
+  /* Estados (Status & Hardware) */
+  --status-success: #249b24;
+  --status-error: #ce1919;  
+  --status-warning: #cf961b;  /* Ámbar — usado en Match Time */
+  --status-sim: #20ad20;    
+  --status-real: #1f931f;
+  --module-enabled: #21ac21;  /* Texto de módulos activos */
+  --module-disabled: #cf1414; /* Texto de módulos inactivos */
+
+  --module-enabled: #31cc2e;      /* Verde neón intenso */
+  --module-disabled: #e02020;     /* Rojo escarlata intenso */
+}
+
+/* =========================================
+   GLOBAL STYLES
+========================================= */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', Arial, sans-serif;
+}
+
+body {
+  background: var(--bg-app);
+  color: var(--text-primary);
+  overflow: hidden;
+}
+
+.app-root {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
