@@ -11,11 +11,14 @@
 // side they have to change on the other: it is the only contract between the
 // packager and the installer.
 //
-// Every archive carries the executable at its root and nothing else. Being flat
-// is not incidental: the installer drops the contents straight into the install
-// folder, and mars-desktop looks for the Simulation Studio NEXT TO its own
-// executable (see src-tauri/src/simlauncher.rs). An intermediate folder would
+// Every archive carries its executable AT THE ROOT. That is not incidental: the
+// installer drops the contents straight into the install folder, and
+// mars-desktop looks for the Simulation Studio NEXT TO its own executable (see
+// src-tauri/src/simlauncher.rs). Putting the binary inside a subfolder would
 // break that lookup without any error at all.
+//
+// The Studio's archive also carries a `sim/` folder with the data it needs to
+// start; see `stageSimData` for what goes in and why.
 
 import { execFileSync } from "node:child_process"
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
@@ -73,31 +76,66 @@ const run = (cmd, cmdArgs, options = {}) => {
 }
 
 /**
- * Compresses `files` (absolute paths) into one flat archive.
+ * Compresses `entries` (absolute paths to files or folders) into one archive.
+ *
+ * Files land at the root; a folder keeps its own name and tree, which is how
+ * the Studio's `sim/` data travels.
  *
  * The system's own tool is used rather than an npm library: both
  * `Compress-Archive` and `tar` exist on all three platforms and on the CI
  * runners, and the packager needs no node_modules of its own.
  */
-function packageArchive(name, files) {
+function packageArchive(name, entries) {
   const dest = join(outDir, name)
   rmSync(dest, { force: true })
 
   if (OS === "windows") {
-    const list = files.map((f) => `'${f.replace(/'/g, "''")}'`).join(",")
+    const list = entries.map((f) => `'${f.replace(/'/g, "''")}'`).join(",")
     run("powershell", [
       "-NoProfile",
       "-Command",
       `Compress-Archive -Path ${list} -DestinationPath '${dest.replace(/'/g, "''")}' -Force`,
     ])
   } else {
-    // -C per file so the tar stays flat even when the binaries come from
+    // -C per entry so the tar stays flat even when the binaries come from
     // different folders (target/release of two different crates).
-    const parts = files.flatMap((f) => ["-C", dirname(f), f.slice(dirname(f).length + 1)])
+    const parts = entries.flatMap((f) => ["-C", dirname(f), f.slice(dirname(f).length + 1)])
     run("tar", ["-czf", dest, ...parts])
   }
   const bytes = readFileSync(dest).length
   console.log(`  → ${name} (${(bytes / 1048576).toFixed(1)} MB)`)
+}
+
+/**
+ * Stages the `sim/` data the Studio needs in order to START.
+ *
+ * `Supervisor::descubrir()` looks for a `sim/` with `worlds/` and `protocol/`
+ * in it, and without one the Studio writes the reason to stderr and exits. It
+ * is built with no console, so that message goes nowhere: the button in
+ * mars-desktop appeared to do nothing at all. That is what shipping the
+ * executable on its own cost.
+ *
+ * What is copied is tiny (about half a megabyte) and is data, not build
+ * output: worlds, the protocol contract, the Gazebo GUI layout, the models,
+ * the Java glue and the engine sources. What is NOT copied is `target/`,
+ * `build/` and `fields/` (gigabytes, and the Studio's own Field Library
+ * reinstalls the fields), nor the conda environment, which the Studio
+ * diagnoses and explains by itself.
+ */
+function stageSimData() {
+  const stage = join(outDir, "_stage")
+  rmSync(stage, { recursive: true, force: true })
+  const simOut = join(stage, "sim")
+  mkdirSync(simOut, { recursive: true })
+
+  const skip = (src) => !/[\\/](__pycache__|target|build|dist|\.gzsource)$/.test(src)
+  for (const dir of ["worlds", "protocol", "gui", "models", "glue", "engine"]) {
+    cpSync(join(root, "sim", dir), join(simOut, dir), { recursive: true, filter: skip })
+  }
+  for (const file of ["environment.yml", "build.ps1", "verify.ps1"]) {
+    cpSync(join(root, "sim", file), join(simOut, file))
+  }
+  return simOut
 }
 
 // --- Build ------------------------------------------------------------------
@@ -165,7 +203,7 @@ if (HAS_STUDIO && !noStudio) {
   run("cargo", cargoStudio)
   const binary = join(root, "sim/app/target", SUBDIR, `mars-sim-app${EXE}`)
   if (existsSync(binary)) {
-    packageArchive(`mars-simulation-studio-${OS}-${ARCH}.${EXT}`, [binary, icon])
+    packageArchive(`mars-simulation-studio-${OS}-${ARCH}.${EXT}`, [binary, icon, stageSimData()])
   } else {
     // Not fatal: the installer knows how to carry on without a component the
     // release does not publish, and says so on screen.
@@ -191,6 +229,7 @@ if (existsSync(installer)) {
 }
 
 rmSync(icon, { force: true })
+rmSync(join(outDir, "_stage"), { recursive: true, force: true })
 
 writeFileSync(join(outDir, "VERSION"), `${version}\n`)
 console.log(`\nDone. Archives are in ${outDir}`)

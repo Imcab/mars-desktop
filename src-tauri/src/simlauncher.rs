@@ -1,32 +1,35 @@
-//! Lanzador de MARS Simulation Studio.
+//! MARS Simulation Studio launcher.
 //!
-//! Esto es TODO lo que mars-desktop sabe de la simulación: dónde está su
-//! ejecutable y cómo abrirlo. Nada de Gazebo entra aquí.
+//! This is ALL mars-desktop knows about the simulation: where its executable is
+//! and how to open it. Nothing about Gazebo lives here.
 //!
-//! La simulación es una aplicación aparte a propósito. Arrastra el entorno
-//! conda entero --- Gazebo, sus plugins, sus dependencias --- y ese peso no
-//! tiene por qué entrar en el bundle del dashboard, que es lo que el equipo usa
-//! en competencia. Además puede colgarse, actualizarse o reinstalarse sin tocar
-//! la app que tiene que estar viva cuando importa.
+//! The simulation is a separate application on purpose. It drags the whole
+//! conda environment along --- Gazebo, its plugins, its dependencies --- and
+//! that weight has no business inside the dashboard's bundle, which is what the
+//! team uses at competition. It can also hang, update or be reinstalled without
+//! touching the app that has to stay alive when it matters.
 //!
-//! El proceso se lanza y se suelta: no se supervisa desde aquí. El Studio tiene
-//! su propia ventana, su propio ciclo de vida y su propio supervisor de la
-//! simulación. Cerrar mars-desktop no cierra la simulación, y eso es
-//! deliberado.
+//! The process is launched and let go: it is not supervised from here. The
+//! Studio has its own window, its own life cycle and its own supervisor for the
+//! simulation. Closing mars-desktop does not close the simulation, and that is
+//! deliberate.
 
+use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
+use std::time::{Duration, Instant};
 
 #[cfg(windows)]
 const EXE: &str = "mars-sim-app.exe";
 #[cfg(not(windows))]
 const EXE: &str = "mars-sim-app";
 
-/// Busca el ejecutable de MARS Simulation Studio.
+/// Finds the MARS Simulation Studio executable.
 ///
-/// Cubre los dos escenarios reales: desarrollo, donde vive en el `target` de su
-/// propio crate, y una instalación, donde viaja junto a mars-desktop.
-fn buscar_ejecutable() -> Option<PathBuf> {
+/// It covers the two real scenarios: development, where it lives in its own
+/// crate's `target`, and an installation, where it travels next to
+/// mars-desktop.
+fn find_executable() -> Option<PathBuf> {
     if let Ok(p) = std::env::var("MARS_SIM_APP") {
         let p = PathBuf::from(p);
         if p.is_file() {
@@ -34,28 +37,28 @@ fn buscar_ejecutable() -> Option<PathBuf> {
         }
     }
 
-    let mut raices: Vec<PathBuf> = Vec::new();
+    let mut roots: Vec<PathBuf> = Vec::new();
     if let Ok(exe) = std::env::current_exe() {
-        // Junto al ejecutable: el caso instalado.
+        // Next to the executable: the installed case.
         if let Some(dir) = exe.parent() {
-            raices.push(dir.to_path_buf());
+            roots.push(dir.to_path_buf());
         }
-        raices.push(exe);
+        roots.push(exe);
     }
     if let Ok(cwd) = std::env::current_dir() {
-        raices.push(cwd);
+        roots.push(cwd);
     }
 
-    for raiz in raices {
-        for dir in raiz.ancestors() {
+    for root in roots {
+        for dir in root.ancestors() {
             for rel in [
                 Path::new(EXE).to_path_buf(),
                 Path::new("sim/app/target/release").join(EXE),
                 Path::new("sim/app/target/debug").join(EXE),
             ] {
-                let candidato = dir.join(&rel);
-                if candidato.is_file() {
-                    return Some(candidato);
+                let candidate = dir.join(&rel);
+                if candidate.is_file() {
+                    return Some(candidate);
                 }
             }
         }
@@ -63,31 +66,77 @@ fn buscar_ejecutable() -> Option<PathBuf> {
     None
 }
 
-/// Si MARS Simulation Studio está instalado, y dónde. La UI lo usa para no ofrecer un botón
-/// que no puede hacer nada.
+/// Whether MARS Simulation Studio is installed, and where. The UI uses it so as
+/// not to offer a button that can do nothing.
 #[tauri::command]
 pub fn sim_app_disponible() -> Option<String> {
-    buscar_ejecutable().map(|p| p.display().to_string())
+    find_executable().map(|p| p.display().to_string())
 }
 
-/// Abre MARS Simulation Studio en su propia ventana.
+/// How long to wait to see whether the Studio died on startup.
+///
+/// Its startup checks (finding `sim/` and the conda environment) are disk
+/// reads: if they fail, they fail within tens of milliseconds. A second and a
+/// half covers them with room to spare and is not noticeable when opening.
+const STARTUP_GRACE: Duration = Duration::from_millis(1500);
+
+/// Opens MARS Simulation Studio in its own window.
+///
+/// It waits a moment before reporting success. The Studio is built with no
+/// console (`windows_subsystem = "windows"`) and, if it cannot find `sim/` or
+/// the conda environment, it writes the reason to stderr and dies: without this
+/// detour `spawn()` returns Ok, nobody sees anything, and the button looks like
+/// it does absolutely nothing. That happened, and there is no worse symptom to
+/// debug.
 #[tauri::command]
 pub fn abrir_sim_app() -> Result<String, String> {
-    let exe = buscar_ejecutable().ok_or_else(|| {
-        "No se encontró MARS Simulation Studio. Compilalo con `cargo build` en sim/app, \
-         o poné MARS_SIM_APP con la ruta de su ejecutable."
+    let exe = find_executable().ok_or_else(|| {
+        "MARS Simulation Studio was not found. Build it with `cargo build` in sim/app, \
+         or set MARS_SIM_APP to the path of its executable."
             .to_string()
     })?;
 
-    // El directorio de trabajo se pone en el del ejecutable para que el Studio
-    // encuentre `sim/` subiendo desde ahí. Sin esto hereda el de mars-desktop,
-    // que puede ser cualquiera segun desde donde se abrio la app.
+    // The working directory is set to the executable's own so the Studio finds
+    // `sim/` by walking up from there. Without this it inherits mars-desktop's,
+    // which can be anything depending on where the app was opened from.
     let dir = exe.parent().unwrap_or_else(|| Path::new("."));
 
-    Command::new(&exe)
+    // stderr goes to a file rather than a pipe on purpose: a pipe nobody reads
+    // fills up and blocks the Studio, which logs to stderr while it runs.
+    let log = std::env::temp_dir().join("mars-sim-app-startup.log");
+    let sink = fs::File::create(&log)
+        .map(Stdio::from)
+        .unwrap_or_else(|_| Stdio::null());
+
+    let mut child = Command::new(&exe)
         .current_dir(dir)
+        .stderr(sink)
         .spawn()
-        .map_err(|e| format!("no se pudo abrir MARS Simulation Studio: {e}"))?;
+        .map_err(|e| format!("could not open MARS Simulation Studio: {e}"))?;
+
+    let deadline = Instant::now() + STARTUP_GRACE;
+    while Instant::now() < deadline {
+        match child.try_wait() {
+            // Still alive: the window is opening. It is let go and no longer
+            // supervised, which is what this launcher has always done.
+            Ok(None) => std::thread::sleep(Duration::from_millis(50)),
+            Ok(Some(status)) => {
+                let reason = fs::read_to_string(&log).unwrap_or_default();
+                let reason = reason.trim();
+                return Err(if reason.is_empty() {
+                    format!(
+                        "MARS Simulation Studio closed on startup (exit code {}) without saying why.",
+                        status.code().unwrap_or(-1)
+                    )
+                } else {
+                    format!("MARS Simulation Studio could not start:\n\n{reason}")
+                });
+            }
+            // Not being able to ask after the child is no reason to report an
+            // error: the process is already launched.
+            Err(_) => break,
+        }
+    }
 
     Ok(exe.display().to_string())
 }
@@ -96,51 +145,51 @@ pub fn abrir_sim_app() -> Result<String, String> {
 mod tests {
     use super::*;
 
-    /// Si el Studio está compilado, el launcher tiene que encontrarlo.
+    /// If the Studio is built, the launcher has to find it.
     ///
-    /// La búsqueda sube por los ancestros del ejecutable de test, que en
-    /// `src-tauri/target/debug/deps` pasa por la raíz del repositorio y de ahí
-    /// llega a `sim/app/target/debug`. Es exactamente el mismo camino que sigue
-    /// la app en desarrollo, así que si este test pasa, el botón funciona.
+    /// The search walks up the ancestors of the test executable, which in
+    /// `src-tauri/target/debug/deps` passes through the repository root and from
+    /// there reaches `sim/app/target/debug`. It is exactly the same path the app
+    /// follows in development, so if this test passes, the button works.
     #[test]
-    fn encuentra_mars_sim_si_esta_compilado() {
+    fn finds_mars_sim_when_it_is_built() {
         let repo = Path::new(env!("CARGO_MANIFEST_DIR"))
             .parent()
-            .expect("src-tauri siempre cuelga de la raíz del repo");
-        let esperado = repo.join("sim/app/target/debug").join(EXE);
+            .expect("src-tauri always hangs off the repo root");
+        let expected = repo.join("sim/app/target/debug").join(EXE);
 
-        if !esperado.is_file() {
-            // Sin compilar no hay nada que encontrar, y hacer fallar el test
-            // por eso convertiría `cargo test` en rehén del orden de compilación.
-            eprintln!("saltado: {} no está compilado", esperado.display());
+        if !expected.is_file() {
+            // With nothing built there is nothing to find, and failing the test
+            // over that would hold `cargo test` hostage to build order.
+            eprintln!("skipped: {} is not built", expected.display());
             return;
         }
 
-        let hallado = buscar_ejecutable().expect("está compilado pero no se encontró");
+        let found = find_executable().expect("it is built but was not found");
         assert!(
-            hallado.ends_with(EXE),
-            "encontró algo que no es el ejecutable: {}",
-            hallado.display()
+            found.ends_with(EXE),
+            "found something that is not the executable: {}",
+            found.display()
         );
-        assert!(hallado.is_file());
+        assert!(found.is_file());
     }
 
-    /// La variable de entorno manda sobre la búsqueda.
+    /// The environment variable wins over the search.
     #[test]
-    fn mars_sim_app_tiene_prioridad() {
-        // Una ruta que no existe no debe ganar: la variable dice dónde mirar,
-        // no promete que haya algo. Si ganara, apuntarla mal dejaría el botón
-        // muerto sin manera de recuperarse salvo desapuntarla.
-        let antes = std::env::var("MARS_SIM_APP").ok();
-        std::env::set_var("MARS_SIM_APP", "no/existe/en/ningun/sitio.exe");
-        let hallado = buscar_ejecutable();
-        match antes {
+    fn mars_sim_app_takes_priority() {
+        // A path that does not exist must not win: the variable says where to
+        // look, it does not promise anything is there. If it won, pointing it
+        // wrong would leave the button dead with no way back but unsetting it.
+        let before = std::env::var("MARS_SIM_APP").ok();
+        std::env::set_var("MARS_SIM_APP", "does/not/exist/anywhere.exe");
+        let found = find_executable();
+        match before {
             Some(v) => std::env::set_var("MARS_SIM_APP", v),
             None => std::env::remove_var("MARS_SIM_APP"),
         }
 
-        if let Some(p) = hallado {
-            assert!(p.is_file(), "devolvió una ruta que no existe: {}", p.display());
+        if let Some(p) = found {
+            assert!(p.is_file(), "returned a path that does not exist: {}", p.display());
         }
     }
 }

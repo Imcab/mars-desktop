@@ -92,10 +92,21 @@ taking them along.
   for the Simulation Studio *next to* its own executable
   (`src-tauri/src/simlauncher.rs`): an intermediate folder would break that
   lookup without any error at all.
+- **The Studio needs its `sim/` folder to even start.** `Supervisor::descubrir()`
+  looks for a `sim/` containing `worlds/` and `protocol/`, and without one it
+  writes the reason to stderr and exits — with no console, so the message goes
+  nowhere. Shipping the executable alone made the button in mars-desktop look
+  like it did nothing at all. The Studio's archive now carries that data (about
+  half a megabyte: worlds, protocol, GUI layout, models, Java glue, engine
+  sources).
 - **What the installer does NOT ship**: the Gazebo environment the Simulation
-  Studio needs in order to simulate (conda, see `sim/environment.yml`). The
-  Studio itself is installed — its interface, its world editor — but the physics
-  engine is a separate multi-gigabyte dependency that the Studio documents.
+  Studio needs in order to *simulate* (conda, see `sim/environment.yml`) and the
+  compiled engine. The Studio opens, its Diagnostics page says what is missing
+  and how to create the environment. That is a separate multi-gigabyte
+  dependency.
+- **A launch that fails is never silent.** `abrir_sim_app` waits a moment,
+  notices if the Studio died, and reports the reason it wrote to stderr. "I
+  click and nothing happens" is the worst symptom there is.
 
 ## Development
 
