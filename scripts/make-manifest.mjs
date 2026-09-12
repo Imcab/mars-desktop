@@ -48,6 +48,30 @@ if (artifacts.length === 0) {
   process.exit(1)
 }
 
+// Si una plataforma aparece, tiene que aparecer ENTERA. Un pase que se pisa a
+// si mismo deja media plataforma afuera y el workflow igual termina en verde:
+// paso con macOS, que publico solo x86_64 porque el segundo pase borraba lo
+// que habia dejado el primero. Un manifiesto a medias es peor que ninguno,
+// porque el instalador lo cree.
+const porPlataforma = new Map()
+for (const a of artifacts) {
+  if (a.component !== "mars-desktop") continue
+  const clave = `${a.os}-${a.arch}`
+  if (!porPlataforma.has(clave)) porPlataforma.set(clave, new Set())
+  porPlataforma.get(clave).add(a.edition)
+}
+const incompletas = [...porPlataforma]
+  .filter(([, ediciones]) => !(ediciones.has("full") && ediciones.has("tools")))
+  .map(([clave, ediciones]) => `${clave} (solo ${[...ediciones].join(", ")})`)
+
+if (incompletas.length > 0) {
+  console.error(
+    `Estas plataformas estan a medias: ${incompletas.join("; ")}.\n` +
+      "Cada una tiene que traer las dos ediciones de mars-desktop.",
+  )
+  process.exit(1)
+}
+
 const manifiesto = {
   schema: 1,
   version,

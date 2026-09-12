@@ -107,7 +107,14 @@ console.log(
 )
 correr("node", ["scripts/sync-version.mjs"])
 
-rmSync(salida, { recursive: true, force: true })
+// La carpeta se vacia SOLO en el pase de la arquitectura nativa. El segundo
+// pase de macOS (`--arch x86_64`) corre sobre la misma carpeta, y si tambien
+// la vaciara se llevaria por delante los paquetes arm64 que acaba de dejar el
+// primero --- que es exactamente lo que paso la primera vez: la release salio
+// sin ningun archivo de Apple Silicon y el workflow igual dijo "success".
+if (!arcoPedido) {
+  rmSync(salida, { recursive: true, force: true })
+}
 mkdirSync(salida, { recursive: true })
 
 // El icono viaja con el paquete: en Linux el `.desktop` que crea el instalador
