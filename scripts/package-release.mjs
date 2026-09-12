@@ -114,17 +114,9 @@ for (const edicion of ediciones) {
     "--features", "custom-protocol",
   ]
   if (edicion === "tools") cargo.push("--no-default-features")
+  correr("cargo", cargo)
 
-  // Un `target` por edicion. Las dos usan sets de features distintos, y cargo
-  // no cachea dos sets a la vez sobre el mismo directorio: compartirlo hace
-  // que cada edicion invalide a la anterior y reconstruya el arbol ENTERO.
-  // Medido en esta maquina: 50 minutos por pase compartiendo target, contra
-  // poco mas de un minuto por edicion con uno propio. Cuesta disco; el disco
-  // es mas barato que la espera.
-  const objetivo = join(raiz, "src-tauri/target", edicion)
-  correr("cargo", cargo, { env: { ...process.env, CARGO_TARGET_DIR: objetivo } })
-
-  const binario = join(objetivo, "release", `mars-desktop${EXE}`)
+  const binario = join(raiz, "src-tauri/target/release", `mars-desktop${EXE}`)
   if (!existsSync(binario)) {
     console.error(`cargo no dejó ${binario}`)
     process.exit(1)
