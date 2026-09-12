@@ -15,6 +15,13 @@ name = "mars-sim-app"
 version = "0.9.4"
 edition = "2021"
 
+# Ver la nota en src-tauri/Cargo.toml: sin `custom-protocol` el binario queda
+# en modo desarrollo. Aca no rompia porque este tauri.conf.json no declara
+# devUrl, pero depender de esa casualidad no es una estrategia.
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 

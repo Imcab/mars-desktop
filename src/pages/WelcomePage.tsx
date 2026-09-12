@@ -110,6 +110,9 @@ function Banner({ projectName }: { projectName: string | null }) {
         <div style={{ fontSize: 11.5, color: "var(--text-menubar)", letterSpacing: 0.4 }}>
           Modular Architecture for Robot Systems
         </div>
+        {/* En la edicion Tools no hay proyectos: anunciar que no hay ninguno
+            cargado seria hablar de algo que no existe. */}
+        {MARS_ENABLED && (
         <div style={{ fontSize: 10, marginTop: 2, fontFamily: "ui-monospace, monospace" }}>
           {projectName ? (
             <span style={{ color: "#f0a860" }}>PROJECT: {projectName.toUpperCase()}</span>
@@ -117,6 +120,7 @@ function Banner({ projectName }: { projectName: string | null }) {
             <span style={{ color: "var(--text-menubar-dim)" }}>NO PROJECT LOADED</span>
           )}
         </div>
+        )}
       </div>
     </div>
   )

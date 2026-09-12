@@ -104,7 +104,15 @@ for (const edicion of ediciones) {
   // El front primero: el binario lo empotra al compilar.
   correr("npm", ["run", "build"], { env: { ...process.env, MARS_EDITION: edicion } })
 
-  const cargo = ["build", "--release", "--manifest-path", "src-tauri/Cargo.toml"]
+  // `custom-protocol` va explicita y no como feature `default` porque la
+  // edicion Tools se construye con --no-default-features, que se la llevaria
+  // puesta: el binario abriria el devUrl y mostraria el error de conexion del
+  // webview en vez de la app. Ver la nota en src-tauri/Cargo.toml.
+  const cargo = [
+    "build", "--release",
+    "--manifest-path", "src-tauri/Cargo.toml",
+    "--features", "custom-protocol",
+  ]
   if (edicion === "tools") cargo.push("--no-default-features")
   correr("cargo", cargo)
 

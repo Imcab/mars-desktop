@@ -23,6 +23,15 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 # de eso: es la app de NetworkTables sola. Ver src/mars/README.md.
 [features]
 default = ["mars"]
+
+# OBLIGATORIA para una compilacion de produccion. `tauri::is_dev()` es
+# literalmente `!cfg!(feature = "custom-protocol")`: sin ella el binario
+# levanta la interfaz del devUrl (localhost:1420) en vez del bundle
+# empotrado, y lo unico que se ve al abrirlo es el error de conexion del
+# webview. La CLI de Tauri la activa sola al hacer `tauri build`; un
+# `cargo build --release` a secas NO, y ese es el camino que usa
+# scripts/package-release.mjs.
+custom-protocol = ["tauri/custom-protocol"]
 # `regex` solo lo usan el mapa de fuentes Java y la lectura del Manifest, que
 # son del framework: en la edicion Tools ni se baja ni se compila.
 mars = ["dep:regex"]

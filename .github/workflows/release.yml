@@ -63,17 +63,25 @@ jobs:
 
       # Tauri en Linux enlaza contra WebKitGTK y libsoup. Sin esto el build
       # falla en el `pkg-config` con un error que no menciona a Tauri.
+      # Tauri en Linux enlaza contra WebKitGTK y libsoup. Sin esto el build
+      # falla en el `pkg-config` con un error que no menciona a Tauri.
+      #
+      # Es exactamente la lista de prerequisitos de Tauri v2, ni uno mas: el
+      # `libappindicator3-dev` viejo y `libayatana-appindicator3-dev` se
+      # EXCLUYEN entre si, y pedir los dos hace que apt aborte la instalacion
+      # entera. Eso fue lo que tiro el primer intento.
       - name: Dependencias de sistema (Linux)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             libwebkit2gtk-4.1-dev \
-            libappindicator3-dev \
-            librsvg2-dev \
-            patchelf \
             build-essential \
-            curl wget file libssl-dev libxdo-dev libayatana-appindicator3-dev
+            curl wget file \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
 
       - run: npm ci
 

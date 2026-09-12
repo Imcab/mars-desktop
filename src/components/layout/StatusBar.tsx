@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react"
 import { invoke } from "@tauri-apps/api/core"
 import { ConnectionState, LogSource } from "../../store/appStore"
+import { MARS_VERSION_LABEL } from "../../constants/version"
+import { MARS_PRODUCT_NAME } from "../../constants/edition"
+import { MARS_ENABLED } from "@mars"
 
 interface NTLinkStatus {
   address: string
@@ -65,12 +68,16 @@ export default function StatusBar({ connection, projectName, logSource }: Props)
         </StatusField>
       )}
 
-      <StatusField label="Project">
-        {projectName ?? "none"}
-      </StatusField>
+      {MARS_ENABLED && (
+        <StatusField label="Project">
+          {projectName ?? "none"}
+        </StatusField>
+      )}
 
+      {/* Una version escrita a mano acá mentía desde hacía varias releases.
+          Sale de la misma constante que el splash y el instalador. */}
       <div style={{ marginLeft: "auto", fontSize: 10, color: "var(--text-light)" }}>
-        MARS v1.0.0-dev
+        {MARS_PRODUCT_NAME} {MARS_VERSION_LABEL}
       </div>
     </div>
   )

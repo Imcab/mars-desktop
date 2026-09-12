@@ -16,6 +16,12 @@ description = "Instalador de MARS Desktop y su ecosistema"
 authors = ["STZ Robotics"]
 edition = "2021"
 
+# Ver la nota en src-tauri/Cargo.toml: sin `custom-protocol`, `tauri::is_dev()`
+# devuelve true y el binario no sirve la UI empotrada.
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
