@@ -28,11 +28,21 @@ $repo = Split-Path -Parent $PSScriptRoot
 $sim  = Join-Path $repo "sim"
 
 # --- Localizar el entorno conda ---------------------------------------
-$condaEnv = $null
-foreach ($root in @("$env:USERPROFILE\miniforge3", "$env:LOCALAPPDATA\miniforge3")) {
-  $candidate = Join-Path $root "envs\mars-sim"
-  if (Test-Path (Join-Path $candidate "Library\lib\cmake\gz-sim")) { $condaEnv = $candidate; break }
+# El orden es el mismo que usa la app (sim/app/src/supervisor.rs): primero lo
+# que se pide a mano, luego el entorno que este activo, y solo despues los
+# sitios por defecto. CONDA_PREFIX no es un lujo: en CI el entorno lo instala
+# setup-miniconda en su propia ruta, y sin esa linea este script no encuentra
+# nada aunque el entorno este creado y activado.
+$candidatos = @()
+if ($env:MARS_CONDA_ENV) { $candidatos += $env:MARS_CONDA_ENV }
+if ($env:CONDA_PREFIX)   { $candidatos += $env:CONDA_PREFIX }
+foreach ($root in @("$env:USERPROFILE\miniforge3", "$env:LOCALAPPDATA\miniforge3",
+                    "$env:USERPROFILE\miniconda3", "$env:USERPROFILE\anaconda3")) {
+  $candidatos += (Join-Path $root "envs\mars-sim")
 }
+$condaEnv = $candidatos |
+  Where-Object { $_ -and (Test-Path (Join-Path $_ "Library\lib\cmake\gz-sim")) } |
+  Select-Object -First 1
 if (-not $condaEnv) {
   throw "No se encontro el entorno 'mars-sim'. Crealo con: conda env create -f sim\environment.yml"
 }

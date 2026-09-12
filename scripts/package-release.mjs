@@ -5,6 +5,7 @@
 //   node scripts/package-release.mjs --no-studio     dashboard only
 //   node scripts/package-release.mjs --only tools    a single edition
 //   node scripts/package-release.mjs --arch x86_64   macOS' other architecture
+//   node scripts/package-release.mjs --no-engine     a Studio with no engine
 //
 // It leaves the archives in `release/`, with the names the installer expects
 // (`installer/src/platform.rs::archive_name`). If those names change on one
@@ -17,12 +18,14 @@
 // src-tauri/src/simlauncher.rs). Putting the binary inside a subfolder would
 // break that lookup without any error at all.
 //
-// The Studio's archive also carries a `sim/` folder with the data it needs to
-// start; see `stageSimData` for what goes in and why.
+// The Studio's archive also carries a `sim/` folder with the data AND the
+// compiled engine it needs to start; see `stageSimData` and `stageSimBinaries`
+// for what goes in and why. Packaging it on a machine that has not built the
+// engine is refused: that archive installs and can never run.
 
 import { execFileSync } from "node:child_process"
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
-import { dirname, join } from "node:path"
+import { basename, dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..")
@@ -30,6 +33,9 @@ const outDir = join(root, "release")
 
 const args = process.argv.slice(2)
 const noStudio = args.includes("--no-studio")
+// Escape hatch for a machine that cannot build the engine (CI has no conda
+// environment): packages the Studio without it rather than skipping it.
+const allowNoEngine = args.includes("--no-engine")
 const onlyEdition = args.includes("--only") ? args[args.indexOf("--only") + 1] : null
 // Crossing architectures ONLY makes sense on macOS, where both live on the same
 // platform and the system SDK is universal. Windows and Linux are each built on
@@ -121,6 +127,8 @@ function packageArchive(name, entries) {
  * `build/` and `fields/` (gigabytes, and the Studio's own Field Library
  * reinstalls the fields), nor the conda environment, which the Studio
  * diagnoses and explains by itself.
+ *
+ * The compiled engine goes in on top of that, in `stageSimBinaries`.
  */
 function stageSimData() {
   const stage = join(outDir, "_stage")
@@ -136,6 +144,63 @@ function stageSimData() {
     cpSync(join(root, "sim", file), join(simOut, file))
   }
   return simOut
+}
+
+/**
+ * Puts the COMPILED engine into the staged `sim/build/`.
+ *
+ * Without this the install had the data and not one of the four binaries that
+ * actually run a simulation, and Diagnostics said so on the installed machine:
+ * three FAILs and a WARN, each one telling the user to run `sim\build.ps1` --
+ * a script that needs CMake, Ninja, MSVC and the engine sources, none of which
+ * anybody who just downloaded an installer has. Shipping the data alone was
+ * shipping something that can never start.
+ *
+ * Where each piece goes is not free choice: `supervisor.rs` looks for the
+ * engine and MarsLink in `sim/build/` (`GZ_SIM_SYSTEM_PLUGIN_PATH` points
+ * there too, so the plugin has to sit NEXT TO the server), and the bridge in
+ * `sim/build/` before the two cargo folders. Moving any of them means moving
+ * the lookup as well.
+ *
+ * What does NOT travel is Gazebo itself: these binaries link against the conda
+ * environment, which the user creates from `environment.yml` and the Studio
+ * checks on its own page. That is the one prerequisite this cannot remove.
+ *
+ * Returns what was missing, split into `critical` and `optional`.
+ */
+function stageSimBinaries(simOut) {
+  const buildOut = join(simOut, "build")
+  mkdirSync(buildOut, { recursive: true })
+
+  // The bridge is plain cargo, so it lands wherever it was built. Release
+  // first: if both exist it is the one worth shipping.
+  const bridge = ["release", "debug"]
+    .map((profile) => join(root, "sim/bridge/target", profile, `mars-bridge${EXE}`))
+    .find(existsSync)
+
+  const marsLink = OS === "windows" ? "MarsLink.dll" : "libMarsLink.so"
+  // The severity is not this script's to invent: it is the one the app shows on
+  // its own Diagnostics page (`Supervisor::diagnostico`). The 3D window is a
+  // `warn` there --- the simulation runs headless without it, which is how it
+  // runs in CI --- and the other three are `fail`. Two different answers to
+  // "is this required?" is how you end up refusing to ship over a window.
+  const pieces = [
+    ["mars-sim-server", join(root, "sim/build", `mars-sim-server${EXE}`), true],
+    ["mars-bridge", bridge, true],
+    [marsLink, join(root, "sim/build", marsLink), true],
+    ["mars-sim-gui", join(root, "sim/build", `mars-sim-gui${EXE}`), false],
+  ]
+
+  const missing = { critical: [], optional: [] }
+  for (const [name, src, critical] of pieces) {
+    if (src && existsSync(src)) {
+      cpSync(src, join(buildOut, basename(src)))
+      console.log(`  + sim/build/${basename(src)}`)
+    } else {
+      ;(critical ? missing.critical : missing.optional).push(name)
+    }
+  }
+  return missing
 }
 
 // --- Build ------------------------------------------------------------------
@@ -203,7 +268,31 @@ if (HAS_STUDIO && !noStudio) {
   run("cargo", cargoStudio)
   const binary = join(root, "sim/app/target", SUBDIR, `mars-sim-app${EXE}`)
   if (existsSync(binary)) {
-    packageArchive(`mars-simulation-studio-${OS}-${ARCH}.${EXT}`, [binary, icon, stageSimData()])
+    const simData = stageSimData()
+    const missing = stageSimBinaries(simData)
+    // A Studio without its engine installs fine and then fails on the machine
+    // of whoever downloaded it, where there is nothing to build with. Better to
+    // say it here, on the machine that CAN build it, than to ship it.
+    if (missing.optional.length) {
+      console.warn(`  WARNING: no ${missing.optional.join(", ")}; the simulation will run headless.`)
+    }
+    if (missing.critical.length && !allowNoEngine) {
+      console.error(
+        `\nThe Studio was NOT packaged: the compiled engine is missing (${missing.critical.join(", ")}).\n` +
+          `Build it and run this again:\n` +
+          `    conda activate mars-sim\n` +
+          `    sim\\build.ps1                                     # engine, world window, MarsLink\n` +
+          `    cargo build --release --manifest-path sim/bridge/Cargo.toml\n` +
+          `Pass --no-engine to package it anyway (it will not start).`,
+      )
+    } else {
+      if (missing.critical.length) {
+        console.warn(
+          `  WARNING: packaging without ${missing.critical.join(", ")}; the Studio will not start.`,
+        )
+      }
+      packageArchive(`mars-simulation-studio-${OS}-${ARCH}.${EXT}`, [binary, icon, simData])
+    }
   } else {
     // Not fatal: the installer knows how to carry on without a component the
     // release does not publish, and says so on screen.

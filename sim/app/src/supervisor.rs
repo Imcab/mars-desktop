@@ -100,6 +100,16 @@ impl Chequeo {
     }
 }
 
+/// Que hacer cuando falta uno de los binarios compilados.
+///
+/// Dice las dos cosas porque hay dos formas de llegar hasta aqui y el codigo
+/// no puede saber cual es la del usuario: en una instalacion los binarios
+/// VIAJAN dentro de `sim/build/`, no hay fuentes que compilar, y si faltan es
+/// que el paquete salio incompleto --- el arreglo es reinstalar; en el
+/// repositorio se compilan a mano.
+const ARREGLO_BINARIO: &str =
+    "Reinstall MARS, or build it from the repository with sim\\build.ps1";
+
 pub struct Supervisor {
     /// El directorio `sim/` del repositorio.
     sim_dir: PathBuf,
@@ -212,6 +222,27 @@ impl Supervisor {
         &self.conda_env
     }
 
+    /// Los sitios donde puede estar el bridge, en orden de preferencia.
+    ///
+    /// Son tres porque hay tres formas de tenerlo. En una instalacion viaja ya
+    /// compilado dentro de `build/`, junto al motor y a MarsLink: el usuario
+    /// no tiene cargo ni las fuentes del bridge, asi que ese es el unico sitio
+    /// posible. En el repositorio queda donde lo haya dejado cargo, que es
+    /// `release/` o `debug/` segun con que se haya compilado --- y buscar solo
+    /// en `debug/` es lo que hacia que un `cargo build --release` dejara la
+    /// app diciendo que el bridge no existe.
+    fn rutas_bridge(&self) -> [PathBuf; 3] {
+        [
+            self.sim_dir.join("build/mars-bridge.exe"),
+            self.sim_dir.join("bridge/target/release/mars-bridge.exe"),
+            self.sim_dir.join("bridge/target/debug/mars-bridge.exe"),
+        ]
+    }
+
+    fn buscar_bridge(&self) -> Option<PathBuf> {
+        self.rutas_bridge().into_iter().find(|p| p.is_file())
+    }
+
     /// Comprueba, una por una, todas las cosas que tienen que estar en su sitio
     /// para que "Start" funcione.
     ///
@@ -256,25 +287,36 @@ impl Supervisor {
             binario(
                 "Physics engine (mars-sim-server)",
                 "build/mars-sim-server.exe",
-                "Build it with sim\\build.ps1",
+                ARREGLO_BINARIO,
                 true,
             ),
-            binario(
-                "Bridge (mars-bridge)",
-                "bridge/target/debug/mars-bridge.exe",
-                "Build it with: cargo build --manifest-path sim/bridge/Cargo.toml",
-                true,
-            ),
+            {
+                let encontrado = self.buscar_bridge();
+                Chequeo::nuevo(
+                    "Bridge (mars-bridge)",
+                    encontrado.is_some(),
+                    match &encontrado {
+                        Some(p) => p.display().to_string(),
+                        // El que se nombra al faltar es el de la instalacion,
+                        // no el de cargo: es donde tiene que estar en la
+                        // maquina de alguien que no tiene el repositorio.
+                        None => format!("missing: {}", self.rutas_bridge()[0].display()),
+                    },
+                    ARREGLO_BINARIO,
+                )
+            },
             binario(
                 "World window (mars-sim-gui)",
                 "build/mars-sim-gui.exe",
-                "Build it with sim\\build.ps1. Without it the simulation still runs headless.",
+                "Reinstall MARS, or build it from the repository with sim\\build.ps1. \
+                 Without it the simulation still runs headless.",
                 false,
             ),
             binario(
                 "Actuator plugin (MarsLink)",
                 "build/MarsLink.dll",
-                "Build it with sim\\build.ps1. Without it the world loads with no actuators, silently.",
+                "Reinstall MARS, or build it from the repository with sim\\build.ps1. \
+                 Without it the world loads with no actuators, silently.",
                 true,
             ),
             Chequeo::aviso(
@@ -383,12 +425,12 @@ impl Supervisor {
         self.caido = None;
 
         let motor_exe = self.sim_dir.join("build/mars-sim-server.exe");
-        let bridge_exe = self.sim_dir.join("bridge/target/debug/mars-bridge.exe");
-        for exe in [&motor_exe, &bridge_exe] {
-            if !exe.is_file() {
-                bail!("{} is missing. Build it with sim\\build.ps1 and cargo build", exe.display());
-            }
+        if !motor_exe.is_file() {
+            bail!("{} is missing. {}", motor_exe.display(), ARREGLO_BINARIO);
         }
+        let bridge_exe = self.buscar_bridge().ok_or_else(|| {
+            anyhow!("{} is missing. {}", self.rutas_bridge()[0].display(), ARREGLO_BINARIO)
+        })?;
         if !self.sim_dir.join(&cfg.world).is_file() {
             bail!("world {} does not exist", cfg.world);
         }

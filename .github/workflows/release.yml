@@ -62,6 +62,7 @@ jobs:
             src-tauri
             installer
             sim/app
+            sim/bridge
 
       # Tauri on Linux links against WebKitGTK and libsoup. Without this the
       # build fails inside `pkg-config` with an error that never mentions Tauri.
@@ -90,6 +91,48 @@ jobs:
 
       - run: npm test
 
+      # The Simulation Studio's engine is C++ against Gazebo, and Gazebo comes
+      # from conda: there is no wheel, no vendored copy and no way around it.
+      # Without this the packager REFUSES to publish the Studio (see
+      # `stageSimBinaries`) and the release goes out with the dashboard only --
+      # which is exactly what shipped before: an install whose Diagnostics page
+      # was three FAILs, on a machine with no compiler to fix them.
+      #
+      # It is the slowest step of the job (the environment is about 2 GB) and
+      # it only runs on Windows because that is the only platform where the
+      # engine is built today.
+      - name: Gazebo toolchain (Windows)
+        if: runner.os == 'Windows'
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          miniforge-version: latest
+          environment-file: sim/environment.yml
+          activate-environment: mars-sim
+          # Solving Gazebo's dependency tree with plain conda is the difference
+          # between a couple of minutes and a quarter of an hour.
+          use-mamba: true
+
+      # `pwsh -l` so the profile setup-miniconda wrote runs and CONDA_PREFIX
+      # points at mars-sim; build.ps1 and the bridge both find the environment
+      # through it. MSVC is already on the runner, which is what build.ps1
+      # needs on top of conda.
+      - name: Build the simulation engine (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh -l {0}
+        run: |
+          # A custom shell does not get the `stop` preference and the exit-code
+          # check that GitHub injects into its own `pwsh` shell, so a failed
+          # build here would go green. Both are set by hand.
+          $ErrorActionPreference = "Stop"
+          if (-not $env:CONDA_PREFIX) { throw "the mars-sim environment is not active" }
+          ./sim/build.ps1
+          # gz-transport-sys resolves the C++ libraries through pkg-config, the
+          # same way sim/verify.ps1 does it.
+          $env:PKG_CONFIG_PATH = "$env:CONDA_PREFIX\Library\lib\pkgconfig"
+          $env:PATH = "$env:CONDA_PREFIX\Library\bin;$env:PATH"
+          cargo build --release --manifest-path sim/bridge/Cargo.toml --bins
+          if ($LASTEXITCODE -ne 0) { throw "the bridge build failed" }
+
       - name: Build and package
         run: node scripts/package-release.mjs
 
@@ -111,6 +154,17 @@ jobs:
   publish:
     name: Publish the release
     needs: package
+    # A dispatch from a test branch must NOT publish. This job has no trigger of
+    # its own: it runs whenever `package` finishes, including the manual runs
+    # used to try a change out on a branch. And it does not publish a draft --
+    # with `draft: false` and a `tag_name` that falls back to `v<version>`, a
+    # run from a branch would CREATE that tag and the release, on that branch's
+    # commit, and the installer serves the latest release the moment it exists.
+    #
+    # So: tags publish, `main` publishes when it is dispatched by hand (that is
+    # what the `version` input is for), and any other branch stops at the
+    # artifacts, which is all a test run needs.
+    if: github.ref_type == 'tag' || github.ref_name == 'main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
