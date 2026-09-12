@@ -1,0 +1,31 @@
+{
+  "$comment": "Mapa del robot de pruebas: skid-steer de cuatro ruedas motrices, sin direccion. Es el que usa sim/verify.ps1 para probar el lazo completo. Para el mapa de un swerve real ver sim/protocol/robot-map.example.json.",
+
+  "protocol": "0.1.0",
+  "robot": "testbot",
+  "world": "mars",
+  "model": "robot",
+  "profile": "vendor",
+
+  "$comment_profile": "vendor: los motores son CAN y el lazo de hardware va por el glue sobre NT4. Es el perfil que se usa de verdad; el perfil hal (HALSim WebSocket) todavia no esta implementado.",
+
+  "$comment_sdf": "Apunta al SDF que implementa este mapa. check.py lo usa para verificar que el orden de los <actuator> del <plugin> coincida con el orden de la lista de abajo: ese orden ES el indice dentro de gz.msgs.Actuators.normalized, y si divergen el robot recibe los comandos cruzados sin ningun error.",
+  "sdf": "worlds/testbot.sdf",
+
+  "actuators": [
+    { "name": "fl_drive", "joint": "fl_drive_joint", "motor": "kraken_x60", "gearRatio": 6.75, "inverted": false, "hal": { "kind": "pwm", "channel": 0 } },
+    { "name": "fr_drive", "joint": "fr_drive_joint", "motor": "kraken_x60", "gearRatio": 6.75, "inverted": false,  "hal": { "kind": "pwm", "channel": 1 } },
+    { "name": "bl_drive", "joint": "bl_drive_joint", "motor": "kraken_x60", "gearRatio": 6.75, "inverted": false, "hal": { "kind": "pwm", "channel": 2 } },
+    { "name": "br_drive", "joint": "br_drive_joint", "motor": "kraken_x60", "gearRatio": 6.75, "inverted": false,  "hal": { "kind": "pwm", "channel": 3 } }
+  ],
+
+  "encoders": [
+    { "name": "fl_enc", "joint": "fl_drive_joint", "countsPerRevolution": 2048, "hal": { "kind": "encoder", "index": 0 } },
+    { "name": "fr_enc", "joint": "fr_drive_joint", "countsPerRevolution": 2048, "hal": { "kind": "encoder", "index": 1 } },
+    { "name": "bl_enc", "joint": "bl_drive_joint", "countsPerRevolution": 2048, "hal": { "kind": "encoder", "index": 2 } },
+    { "name": "br_enc", "joint": "br_drive_joint", "countsPerRevolution": 2048, "hal": { "kind": "encoder", "index": 3 } }
+  ],
+
+  "$comment_imu": "El testbot no lleva IMU todavia: el chasis no declara ningun <sensor type=\"imu\">. Se agrega cuando el lazo de actuadores este cerrado.",
+  "imu": null
+}

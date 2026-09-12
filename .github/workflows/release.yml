@@ -1,0 +1,155 @@
+# Publica una release con los ejecutables de las tres plataformas.
+# Se dispara al empujar una etiqueta `vX.Y.Z`, o a mano desde la pestaña
+# Actions.
+#
+# Existe porque NO SE PUEDE compilar para las tres plataformas desde una sola:
+# Tauri enlaza contra el webview del sistema (WebView2 en Windows, WebKitGTK en
+# Linux, WKWebView en macOS), así que cada ejecutable tiene que construirse en
+# su propio sistema operativo. Por eso cada plataforma es un job en su runner y
+# el `manifest.json` se arma al final, cuando ya están todos los paquetes.
+
+name: release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Versión a publicar (sin la v). Vacío = la de version.ts"
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  empaquetar:
+    name: ${{ matrix.nombre }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      # Que falle una plataforma no tiene por qué tirar las otras: una release
+      # con dos de tres es útil, y el instalador avisa de lo que falta.
+      fail-fast: false
+      matrix:
+        include:
+          - nombre: Windows x86_64
+            runner: windows-latest
+          # 22.04 y no la última: fija una glibc vieja, y un binario enlazado
+          # contra una glibc nueva no corre en distros anteriores, mientras que
+          # al revés sí funciona.
+          - nombre: Linux x86_64
+            runner: ubuntu-22.04
+          - nombre: macOS arm64
+            runner: macos-latest
+          - nombre: macOS x86_64
+            runner: macos-13
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            src-tauri
+            installer
+            sim/app
+
+      # Tauri en Linux enlaza contra WebKitGTK y libsoup. Sin esto el build
+      # falla en el `pkg-config` con un error que no menciona a Tauri.
+      - name: Dependencias de sistema (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            build-essential \
+            curl wget file libssl-dev libxdo-dev libayatana-appindicator3-dev
+
+      - run: npm ci
+
+      - name: Comprobar que la versión esté alineada
+        run: node scripts/sync-version.mjs
+
+      - run: npm test
+
+      - name: Construir y empaquetar
+        run: node scripts/package-release.mjs
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: paquetes-${{ matrix.runner }}
+          path: release/*
+          if-no-files-found: error
+
+  publicar:
+    name: Publicar la release
+    needs: empaquetar
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: descargas
+
+      # Los artifacts bajan en una carpeta por job; la release los quiere
+      # planos y con un solo VERSION.
+      - name: Juntar los paquetes
+        run: |
+          mkdir -p release
+          find descargas -type f ! -name VERSION -exec cp -n {} release/ \;
+          ls -la release
+
+      - name: Escribir el manifiesto
+        run: |
+          VERSION="${{ inputs.version }}"
+          if [ -z "$VERSION" ]; then
+            VERSION=$(grep -oP 'MARS_VERSION\s*=\s*"\K[^"]+' src/constants/version.ts)
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          node scripts/make-manifest.mjs release "$VERSION"
+
+      - name: Publicar
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('v{0}', env.VERSION) }}
+          name: MARS ${{ env.VERSION }}
+          # El instalador lee la última release NO borrador: una publicada como
+          # draft lo dejaría diciendo "no hay ninguna release" sin explicación.
+          draft: false
+          generate_release_notes: true
+          files: release/*
+          body: |
+            ## Instalación
+
+            Descargá el instalador de tu sistema y ejecutalo. Él baja el resto.
+
+            | Sistema | Archivo |
+            |---|---|
+            | **Windows** (recomendado) | `MARS-Installer.exe` |
+            | Linux | `MARS-Installer-linux-x86_64` |
+            | macOS | `MARS-Installer-macos-aarch64` (Apple Silicon) o `-x86_64` (Intel) |
+
+            En Linux y macOS hay que darle permiso de ejecución primero:
+            `chmod +x MARS-Installer-*`.
+
+            El instalador deja elegir entre **MARS completo** (todo el
+            ecosistema) y **Solo herramientas** (el dashboard de NetworkTables,
+            sin el framework), y también desinstala.
+
+            Los `.zip` y `.tar.gz` de esta lista son lo que descarga el
+            instalador: no hace falta bajarlos a mano.

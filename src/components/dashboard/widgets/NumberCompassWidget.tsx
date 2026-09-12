@@ -1,4 +1,3 @@
-import React from "react"
 import CompassDial from "./CompassDial"
 
 export default function NumberCompassWidget({ value }: { value: number }) {

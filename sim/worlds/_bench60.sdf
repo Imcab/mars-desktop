@@ -1,0 +1,77 @@
+<?xml version="1.0" ?>
+<sdf version="1.11">
+  <world name="mars">
+    <physics name="250hz" type="ignored">
+      <max_step_size>0.004</max_step_size><real_time_factor>0</real_time_factor>
+    </physics>
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+    <gravity>0 0 -9.8</gravity>
+    <light type="directional" name="sun"><pose>0 0 10 0 0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse><direction>-0.5 0.1 -0.9</direction></light>
+    <model name="ground_plane"><static>true</static><link name="link">
+      <collision name="collision"><geometry><plane><normal>0 0 1</normal></plane></geometry>
+      <surface><friction><ode><mu>0.9</mu><mu2>0.9</mu2></ode></friction></surface></collision>
+    </link></model>
+    <include><uri>model://fuel</uri><name>fuel_0</name><pose>-2.5340 -0.8340 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_1</name><pose>-2.3720 -0.8340 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_2</name><pose>-2.2100 -0.8340 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_3</name><pose>-2.0480 -0.8340 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_4</name><pose>-1.8860 -0.8340 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_5</name><pose>-1.7240 -0.8340 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_6</name><pose>-1.5620 -0.8340 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_7</name><pose>-1.4000 -0.8340 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_8</name><pose>-1.2380 -0.8340 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_9</name><pose>-1.0760 -0.8340 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_10</name><pose>-0.9140 -0.8340 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_11</name><pose>-0.7520 -0.8340 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_12</name><pose>-0.5900 -0.8340 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_13</name><pose>-0.4280 -0.8340 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_14</name><pose>-0.2660 -0.8340 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_15</name><pose>-0.1040 -0.8340 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_16</name><pose>0.0580 -0.8340 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_17</name><pose>0.2200 -0.8340 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_18</name><pose>0.3820 -0.8340 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_19</name><pose>0.5440 -0.8340 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_20</name><pose>0.7060 -0.8340 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_21</name><pose>0.8680 -0.8340 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_22</name><pose>1.0300 -0.8340 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_23</name><pose>1.1920 -0.8340 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_24</name><pose>1.3540 -0.8340 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_25</name><pose>1.5160 -0.8340 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_26</name><pose>1.6780 -0.8340 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_27</name><pose>1.8400 -0.8340 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_28</name><pose>2.0020 -0.8340 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_29</name><pose>2.1640 -0.8340 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_30</name><pose>2.3260 -0.8340 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_31</name><pose>2.4880 -0.8340 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_32</name><pose>-2.5340 -0.6720 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_33</name><pose>-2.3720 -0.6720 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_34</name><pose>-2.2100 -0.6720 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_35</name><pose>-2.0480 -0.6720 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_36</name><pose>-1.8860 -0.6720 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_37</name><pose>-1.7240 -0.6720 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_38</name><pose>-1.5620 -0.6720 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_39</name><pose>-1.4000 -0.6720 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_40</name><pose>-1.2380 -0.6720 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_41</name><pose>-1.0760 -0.6720 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_42</name><pose>-0.9140 -0.6720 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_43</name><pose>-0.7520 -0.6720 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_44</name><pose>-0.5900 -0.6720 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_45</name><pose>-0.4280 -0.6720 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_46</name><pose>-0.2660 -0.6720 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_47</name><pose>-0.1040 -0.6720 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_48</name><pose>0.0580 -0.6720 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_49</name><pose>0.2200 -0.6720 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_50</name><pose>0.3820 -0.6720 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_51</name><pose>0.5440 -0.6720 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_52</name><pose>0.7060 -0.6720 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_53</name><pose>0.8680 -0.6720 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_54</name><pose>1.0300 -0.6720 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_55</name><pose>1.1920 -0.6720 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_56</name><pose>1.3540 -0.6720 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_57</name><pose>1.5160 -0.6720 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_58</name><pose>1.6780 -0.6720 0.0750 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_59</name><pose>1.8400 -0.6720 0.0750 0 0 0</pose></include>
+  </world>
+</sdf>

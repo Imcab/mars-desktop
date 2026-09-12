@@ -1,4 +1,3 @@
-import React from "react"
 import { labelStyle, inputStyle } from "../DashboardCard.styles"
 
 interface Props {

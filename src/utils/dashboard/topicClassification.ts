@@ -7,11 +7,16 @@ export interface TopicClassification {
   isNumber: boolean
   isString: boolean
   isNumericArray: boolean
+  isTextArray: boolean
+  /** Tabla sendable de WPILib, no un topic (su valor no se lee con unpackLiveValue). */
+  isField2d: boolean
   isStructSingle: boolean
   isStructArray: boolean
   isRotationSingle: boolean
   hasStyleOptions: boolean
 }
+
+const NUMERIC_BASE_TYPES = ["double", "float", "int"]
 
 // Clasifica un topicType de NT4 en las categorías que la Dashboard sabe
 // renderizar. Distinguimos structs sueltos de arreglos de structs, y
@@ -22,10 +27,15 @@ export function classifyTopic(topicType: string): TopicClassification {
   const isStructType = baseType.startsWith("struct:")
   const structName = isStructType ? baseType.slice("struct:".length) : null
 
+  const isField2d = topicType === "Field2d"
   const isBoolean = !isStructType && !isArrayType && topicType === "boolean"
   const isNumber = !isStructType && !isArrayType && (topicType === "double" || topicType === "int" || topicType === "float")
   const isString = !isStructType && !isArrayType && topicType.includes("string")
-  const isNumericArray = !isStructType && isArrayType
+  // Antes CUALQUIER array no-struct contaba como numérico. Eso funcionaba
+  // solo porque el backend descartaba boolean[]/string[]; ahora que llegan de
+  // verdad, mandarlos al widget numérico reventaría en value.toFixed().
+  const isNumericArray = !isStructType && isArrayType && NUMERIC_BASE_TYPES.includes(baseType)
+  const isTextArray = !isStructType && isArrayType && !isNumericArray
   const isStructSingle = isStructType && !isArrayType
   const isStructArray = isStructType && isArrayType
   const isRotationSingle = isStructSingle && structName === "Rotation2d"
@@ -35,7 +45,7 @@ export function classifyTopic(topicType: string): TopicClassification {
 
   return {
     isArrayType, baseType, isStructType, structName,
-    isBoolean, isNumber, isString, isNumericArray,
+    isBoolean, isNumber, isString, isNumericArray, isTextArray, isField2d,
     isStructSingle, isStructArray, isRotationSingle, hasStyleOptions,
   }
 }

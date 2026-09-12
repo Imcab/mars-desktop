@@ -1,0 +1,285 @@
+/* =========================================================================
+   MARS Installer — hoja de estilo única.
+
+   Un instalador se ve una vez cada varios meses: tiene que explicarse solo.
+   De ahí la forma clásica de asistente —banda de marca arriba, una pantalla a
+   la vez, botones de avance abajo a la derecha— en vez de algo más moderno que
+   haya que aprender.
+
+   La paleta sale de tokens.css, que es copia literal de la de mars-desktop:
+   el instalador tiene que verse como el programa que instala.
+   ========================================================================= */
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--text-primary);
+  background: var(--bg-app);
+  /* Un instalador no es un documento: seleccionar texto acá solo produce
+     selecciones azules accidentales al arrastrar la ventana. */
+  user-select: none;
+  cursor: default;
+}
+
+#app { display: flex; flex-direction: column; height: 100%; }
+
+/* --- Banda de marca ----------------------------------------------------- */
+
+.marca {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 22px;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, #3c3d44 0%, #2b2c31 100%);
+  border-bottom: 1px solid #14151a;
+  box-shadow: inset 0 1px 0 #55565e;
+}
+.marca img { height: 28px; object-fit: contain; }
+.marca .divisor { width: 1px; height: 24px; background: #55565e; }
+.marca .titulo { font-size: 12px; color: var(--text-menubar); letter-spacing: 0.3px; }
+.marca .sub {
+  font-size: 10px;
+  margin-top: 2px;
+  font-family: var(--font-mono);
+  color: var(--text-menubar-dim);
+}
+
+/* --- Cuerpo ------------------------------------------------------------- */
+
+.cuerpo {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px 24px;
+  background: var(--bg-page);
+}
+
+.paso { display: none; }
+.paso.activo { display: block; }
+
+h1 { font-size: 17px; font-weight: 600; margin: 0 0 4px; }
+.lede { font-size: 12px; color: var(--text-muted); margin: 0 0 16px; line-height: 1.5; }
+
+/* --- Tarjetas de edición ------------------------------------------------ */
+
+.ediciones { display: flex; flex-direction: column; gap: 10px; }
+
+.edicion {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: 12px;
+  padding: 13px 15px;
+  border: 1px solid var(--border-main);
+  border-radius: 3px;
+  background: var(--bg-panel);
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+.edicion:hover { background: var(--bg-page); border-color: var(--border-dark); }
+.edicion.elegida {
+  border-color: var(--mars-accent);
+  background: var(--toolbar-active-bg);
+}
+.edicion .radio {
+  width: 14px; height: 14px;
+  margin-top: 2px;
+  border-radius: 50%;
+  border: 1px solid var(--border-dark);
+  background: var(--bg-input);
+}
+.edicion.elegida .radio {
+  border-color: var(--mars-accent);
+  /* El punto interior se dibuja con el borde para no meter un <span> más. */
+  border-width: 4px;
+}
+.edicion .nombre { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.edicion .desc { font-size: 11.5px; color: var(--text-muted); margin-top: 3px; line-height: 1.5; }
+.edicion ul { margin: 7px 0 0; padding-left: 16px; font-size: 11.5px; color: var(--text-secondary); line-height: 1.7; }
+.edicion li.no { color: var(--text-light); }
+.edicion li.no::marker { content: "− "; }
+
+.etiqueta {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 2px;
+  background: var(--status-success-bg);
+  color: var(--status-success);
+}
+
+/* --- Campos ------------------------------------------------------------- */
+
+.campo { margin-top: 18px; }
+.campo > label {
+  display: block;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 5px;
+}
+.ruta { display: flex; gap: 6px; }
+.ruta input {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  padding: 5px 8px;
+  border: 1px solid var(--border-main);
+  border-radius: 2px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  user-select: text;
+}
+.check { display: flex; align-items: center; gap: 7px; font-size: 12px; margin-top: 12px; cursor: pointer; }
+
+/* --- Botones ------------------------------------------------------------ */
+
+.pie {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 22px;
+  flex-shrink: 0;
+  background: var(--bg-toolbar);
+  border-top: 1px solid var(--border-main);
+}
+.pie .relleno { flex: 1; }
+
+button {
+  font-family: inherit;
+  font-size: 12px;
+  padding: 6px 18px;
+  border: 1px solid var(--btn-classic-border);
+  border-radius: 2px;
+  background: var(--btn-classic-bg);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+button:hover:not(:disabled) { background: var(--btn-classic-bg-hover); }
+button:active:not(:disabled) { background: var(--btn-classic-bg-active); }
+button:disabled { color: var(--btn-classic-text-disabled); cursor: default; }
+button.primario {
+  background: var(--mars-red);
+  border-color: #8e3232;
+  color: #fff;
+  font-weight: 500;
+}
+button.primario:hover:not(:disabled) { background: #b84545; }
+button.primario:disabled { background: #c9a0a0; border-color: #c9a0a0; color: #fff; }
+button.peligro { color: var(--status-error); border-color: #c09a9a; }
+button.plano { border-color: transparent; background: transparent; }
+button.plano:hover:not(:disabled) { background: var(--btn-classic-bg); border-color: var(--btn-classic-border); }
+
+/* --- Progreso ----------------------------------------------------------- */
+
+.barra {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--bg-dark);
+  border: 1px solid var(--border-main);
+  overflow: hidden;
+  margin: 16px 0 8px;
+}
+.barra .relleno {
+  height: 100%;
+  width: 0%;
+  background: var(--mars-accent);
+  transition: width 0.2s ease;
+}
+.pct { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
+.fase { font-size: 12.5px; margin-top: 2px; }
+
+.bitacora {
+  margin-top: 14px;
+  height: 190px;
+  overflow-y: auto;
+  padding: 8px 10px;
+  border: 1px solid var(--border-main);
+  border-radius: 2px;
+  background: var(--bg-dark);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  user-select: text;
+}
+.bitacora .aviso { color: var(--status-warning); }
+.bitacora .error { color: var(--status-error); }
+.bitacora .ok { color: var(--status-success); }
+
+/* --- Cuadros de estado -------------------------------------------------- */
+
+.aviso-caja, .error-caja, .ok-caja {
+  padding: 10px 12px;
+  border-radius: 3px;
+  font-size: 12px;
+  line-height: 1.55;
+  margin-top: 14px;
+  white-space: pre-wrap;
+  user-select: text;
+}
+.aviso-caja { background: var(--status-warning-bg); border: 1px solid var(--status-warning-border); color: #7a4f08; }
+.error-caja { background: var(--status-error-bg); border: 1px solid var(--status-error-border); color: #8f1515; }
+.ok-caja { background: var(--status-success-bg); border: 1px solid rgba(31,122,31,0.3); color: #16601a; }
+
+.resumen {
+  margin-top: 16px;
+  border: 1px solid var(--border-main);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.resumen .fila {
+  display: grid;
+  grid-template-columns: 165px 1fr;
+  gap: 10px;
+  padding: 7px 12px;
+  font-size: 12px;
+  border-bottom: 1px solid var(--border-light);
+  background: var(--bg-page);
+}
+.resumen .fila:last-child { border-bottom: none; }
+.resumen .fila:nth-child(even) { background: var(--bg-panel); }
+.resumen .k { color: var(--text-muted); }
+.resumen .v { font-family: var(--font-mono); font-size: 11.5px; word-break: break-all; user-select: text; }
+
+.notas {
+  margin-top: 12px;
+  max-height: 110px;
+  overflow-y: auto;
+  padding: 9px 11px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-light);
+  border-radius: 2px;
+  font-size: 11.5px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  color: var(--text-secondary);
+  user-select: text;
+}
+
+/* Un enlace que abre el navegador, no una navegación interna. */
+.enlace {
+  color: var(--mars-accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.girando {
+  display: inline-block;
+  width: 11px; height: 11px;
+  border: 2px solid var(--border-dark);
+  border-top-color: var(--mars-accent);
+  border-radius: 50%;
+  animation: gira 0.7s linear infinite;
+  vertical-align: -1px;
+  margin-right: 7px;
+}
+@keyframes gira { to { transform: rotate(360deg); } }

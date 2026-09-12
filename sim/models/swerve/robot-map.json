@@ -1,0 +1,185 @@
+{
+  "$comment": "GENERADO por sim/worlds/gen_swerve.py junto con swerve.sdf. Se generan del mismo script para que el ORDEN de actuadores no pueda divergir entre los dos.",
+  "protocol": "0.1.0",
+  "robot": "swerve",
+  "world": "mars",
+  "model": "robot",
+  "profile": "vendor",
+  "$comment_profile": "vendor: motores CAN (Kraken sobre TalonFX). El lazo de hardware va por el glue sobre NT4 porque HALSim WebSocket no cubre CAN.",
+  "sdf": "worlds/swerve.sdf",
+  "base_link": "chassis",
+  "actuators": [
+    {
+      "name": "fl_drive",
+      "joint": "fl_drive_joint",
+      "motor": "kraken_x60",
+      "gearRatio": 5.2734375,
+      "inverted": false,
+      "control": "duty",
+      "hal": {
+        "kind": "pwm",
+        "channel": 0
+      }
+    },
+    {
+      "name": "fl_steer",
+      "joint": "fl_steer_joint",
+      "motor": "kraken_x60",
+      "gearRatio": 26.09090909090909,
+      "inverted": false,
+      "control": "position",
+      "hal": {
+        "kind": "pwm",
+        "channel": 1
+      }
+    },
+    {
+      "name": "fr_drive",
+      "joint": "fr_drive_joint",
+      "motor": "kraken_x60",
+      "gearRatio": 5.2734375,
+      "inverted": false,
+      "control": "duty",
+      "hal": {
+        "kind": "pwm",
+        "channel": 2
+      }
+    },
+    {
+      "name": "fr_steer",
+      "joint": "fr_steer_joint",
+      "motor": "kraken_x60",
+      "gearRatio": 26.09090909090909,
+      "inverted": false,
+      "control": "position",
+      "hal": {
+        "kind": "pwm",
+        "channel": 3
+      }
+    },
+    {
+      "name": "bl_drive",
+      "joint": "bl_drive_joint",
+      "motor": "kraken_x60",
+      "gearRatio": 5.2734375,
+      "inverted": false,
+      "control": "duty",
+      "hal": {
+        "kind": "pwm",
+        "channel": 4
+      }
+    },
+    {
+      "name": "bl_steer",
+      "joint": "bl_steer_joint",
+      "motor": "kraken_x60",
+      "gearRatio": 26.09090909090909,
+      "inverted": false,
+      "control": "position",
+      "hal": {
+        "kind": "pwm",
+        "channel": 5
+      }
+    },
+    {
+      "name": "br_drive",
+      "joint": "br_drive_joint",
+      "motor": "kraken_x60",
+      "gearRatio": 5.2734375,
+      "inverted": false,
+      "control": "duty",
+      "hal": {
+        "kind": "pwm",
+        "channel": 6
+      }
+    },
+    {
+      "name": "br_steer",
+      "joint": "br_steer_joint",
+      "motor": "kraken_x60",
+      "gearRatio": 26.09090909090909,
+      "inverted": false,
+      "control": "position",
+      "hal": {
+        "kind": "pwm",
+        "channel": 7
+      }
+    }
+  ],
+  "encoders": [
+    {
+      "name": "fl_drive_enc",
+      "joint": "fl_drive_joint",
+      "countsPerRevolution": 2048,
+      "hal": {
+        "kind": "encoder",
+        "index": 0
+      }
+    },
+    {
+      "name": "fl_steer_enc",
+      "joint": "fl_steer_joint",
+      "countsPerRevolution": 2048,
+      "hal": {
+        "kind": "encoder",
+        "index": 1
+      }
+    },
+    {
+      "name": "fr_drive_enc",
+      "joint": "fr_drive_joint",
+      "countsPerRevolution": 2048,
+      "hal": {
+        "kind": "encoder",
+        "index": 2
+      }
+    },
+    {
+      "name": "fr_steer_enc",
+      "joint": "fr_steer_joint",
+      "countsPerRevolution": 2048,
+      "hal": {
+        "kind": "encoder",
+        "index": 3
+      }
+    },
+    {
+      "name": "bl_drive_enc",
+      "joint": "bl_drive_joint",
+      "countsPerRevolution": 2048,
+      "hal": {
+        "kind": "encoder",
+        "index": 4
+      }
+    },
+    {
+      "name": "bl_steer_enc",
+      "joint": "bl_steer_joint",
+      "countsPerRevolution": 2048,
+      "hal": {
+        "kind": "encoder",
+        "index": 5
+      }
+    },
+    {
+      "name": "br_drive_enc",
+      "joint": "br_drive_joint",
+      "countsPerRevolution": 2048,
+      "hal": {
+        "kind": "encoder",
+        "index": 6
+      }
+    },
+    {
+      "name": "br_steer_enc",
+      "joint": "br_steer_joint",
+      "countsPerRevolution": 2048,
+      "hal": {
+        "kind": "encoder",
+        "index": 7
+      }
+    }
+  ],
+  "$comment_imu": "Sin IMU todavia: el yaw sale de la pose real. Un giroscopio perfecto esconde errores de odometria, asi que agregar el <sensor type=\"imu\"> con ruido es el siguiente paso de fidelidad.",
+  "imu": null
+}

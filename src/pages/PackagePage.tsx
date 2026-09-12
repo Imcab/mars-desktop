@@ -1,5 +1,12 @@
 import { useState, useEffect, useMemo, useCallback } from "react"
 import { invoke } from "@tauri-apps/api/core"
+import PageHeader from "../components/layout/PageHeader"
+import PanelHeader from "../components/layout/PanelHeader"
+import EmptyState from "../components/common/EmptyState"
+import AlertBanner from "../components/common/AlertBanner"
+import Panel from "../components/common/Panel"
+import PropertyRow from "../components/common/PropertyRow"
+import { propertyInputStyle } from "../styles/pageForm"
 
 interface Props {
   projectName: string | null
@@ -144,70 +151,65 @@ export default function PackagePage({ projectName, projectPath }: Props) {
 
       {/* SIDEBAR */}
       <div style={{ width: 300, background: "var(--bg-panel)", borderRight: "1px solid var(--border-main)", display: "flex", flexDirection: "column", flexShrink: 0 }}>
-        <div style={{ padding: "24px 20px", borderBottom: "1px solid var(--border-light)", background: "var(--bg-panel)" }}>
-          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.55)", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 4 }}>
-            Package Manager
-          </div>
-          <div style={{ fontSize: 18, fontWeight: 600, color: "#fff" }}>
-            MARS Packages
-          </div>
-          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 4, lineHeight: 1.4 }}>
-            Project: <span style={{ color: "var(--mars-accent, var(--mars-red))", fontWeight: 600 }}>{projectName.toUpperCase()}</span><br />
-            Dependency registry
-          </div>
-        </div>
+        <PageHeader
+          eyebrow="Package Manager"
+          title="MARS Packages"
+          subtitle={
+            <>
+              Project: <span style={{ color: "var(--mars-accent)", fontWeight: 600 }}>{projectName.toUpperCase()}</span><br />
+              Dependency registry
+            </>
+          }
+        />
 
-        <div style={{ padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20, overflowY: "auto" }}>
+        <div style={{ padding: "24px 20px", display: "flex", flexDirection: "column", gap: 24, overflowY: "auto" }}>
 
-          <div>
-            <label style={labelStyle}>SEARCH PACKAGES</label>
-            <div style={{ position: "relative" }}>
-              <i className="ti ti-search" style={{ position: "absolute", left: 10, top: 8, color: "var(--text-muted)", fontSize: 14 }} />
-              <input
-                type="text"
-                placeholder="e.g. Limelight..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ ...inputStyle, paddingLeft: 32 }}
-              />
+          <Panel title="Registry" icon="ti-package">
+            <div>
+              <PropertyRow label="Search packages">
+                <input
+                  type="text"
+                  placeholder="e.g. Limelight..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={propertyInputStyle}
+                />
+              </PropertyRow>
+              <PropertyRow label="Installed"><span style={{ color: "var(--status-success)" }}>{installedData.length}</span></PropertyRow>
+              <PropertyRow label="Available"><span>{marketplaceData.length}</span></PropertyRow>
+              <PropertyRow label="Last synced"><span>{lastSynced ? lastSynced.toLocaleTimeString() : "—"}</span></PropertyRow>
             </div>
-          </div>
-
-          <div>
-            <label style={labelStyle}>REGISTRY STATUS</label>
-            <div style={{ background: "var(--bg-input)", border: "1px solid var(--border-main)", borderRadius: 4, padding: "12px", display: "flex", flexDirection: "column", gap: 8 }}>
-              <StatRow label="Installed" value={installedData.length} color="var(--status-success)" />
-              <StatRow label="Available" value={marketplaceData.length} />
-              <StatRow label="Last synced" value={lastSynced ? lastSynced.toLocaleTimeString() : "—"} />
+            <div style={{ padding: 8 }}>
+              <button
+                onClick={loadPackages}
+                disabled={loading}
+                style={{
+                  width: "100%", padding: "7px 0", background: "var(--bg-input)",
+                  border: "1px solid var(--border-main)", borderRadius: 3, color: "var(--text-primary)",
+                  fontSize: 11, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6
+                }}
+              >
+                <i className={`ti ti-refresh ${loading ? "mars-spin" : ""}`} />
+                REFRESH REGISTRY
+              </button>
             </div>
-            <button
-              onClick={loadPackages}
-              disabled={loading}
-              style={{
-                marginTop: 8, width: "100%", padding: "7px 0", background: "var(--bg-input)",
-                border: "1px solid var(--border-main)", borderRadius: 3, color: "var(--text-primary)",
-                fontSize: 11, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 6
-              }}
-            >
-              <i className={`ti ti-refresh ${loading ? "mars-spin" : ""}`} />
-              REFRESH REGISTRY
-            </button>
-          </div>
+          </Panel>
 
-          <div style={{ height: 1, background: "var(--border-light)", margin: "4px 0" }} />
-
-          <div>
-            <label style={labelStyle}>MANUAL INSTALL</label>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <input
-                type="text"
-                placeholder="Paste JSON Feature URL..."
-                value={directUrl}
-                onChange={(e) => setDirectUrl(e.target.value)}
-                style={inputStyle}
-                disabled={isInstalling}
-              />
+          <Panel title="Manual Install" icon="ti-download">
+            <div>
+              <PropertyRow label="Feature URL">
+                <input
+                  type="text"
+                  placeholder="Paste JSON Feature URL..."
+                  value={directUrl}
+                  onChange={(e) => setDirectUrl(e.target.value)}
+                  style={propertyInputStyle}
+                  disabled={isInstalling}
+                />
+              </PropertyRow>
+            </div>
+            <div style={{ padding: 8 }}>
               <button
                 onClick={handleDirectInstall}
                 disabled={isInstalling || !directUrl.trim()}
@@ -222,7 +224,7 @@ export default function PackagePage({ projectName, projectPath }: Props) {
                 INSTALL FROM URL
               </button>
             </div>
-          </div>
+          </Panel>
 
         </div>
       </div>
@@ -230,48 +232,36 @@ export default function PackagePage({ projectName, projectPath }: Props) {
       {/* MAIN */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
-        <div style={{ height: 48, background: "var(--bg-menubar)", borderBottom: "1px solid var(--border-main)", display: "flex", alignItems: "center", padding: "0 24px", gap: 16, flexShrink: 0 }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: "#fff" }}>Verified Packages</span>
-          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.55)" }}>
-            {installedList.length} installed · {availableList.length} available
-          </span>
-          {isInstalling && (
-            <div style={{ marginLeft: "auto", fontSize: 11, color: "var(--status-sim)", fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
+        <PanelHeader
+          title="Verified Packages"
+          meta={`${installedList.length} installed · ${availableList.length} available`}
+          action={isInstalling && (
+            <div style={{ fontSize: 11, color: "var(--status-sim)", fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
               <i className="ti ti-loader mars-spin" />
               BUILDING GRADLE...
             </div>
           )}
-        </div>
+        />
 
         <div style={{ flex: 1, padding: "24px 24px 40px", overflowY: "auto" }}>
           <div style={{ width: "100%", maxWidth: 950, margin: "0 auto" }}>
 
             {installStatus && (
-              <div style={{
-                marginBottom: 20, padding: "12px 16px", borderRadius: 4, fontSize: 12, fontWeight: 500,
-                background: installStatus.includes("ERROR") ? "rgba(214, 92, 92, 0.1)" : "var(--bg-input)",
-                border: `1px solid ${installStatus.includes("ERROR") ? "var(--status-error)" : "var(--border-main)"}`,
-                color: installStatus.includes("ERROR") ? "var(--status-error)" : "var(--status-sim)"
-              }}>
-                {installStatus}
+              <div style={{ marginBottom: 20 }}>
+                <AlertBanner icon="" variant={installStatus.includes("ERROR") ? "error" : "neutral"}>
+                  {installStatus}
+                </AlertBanner>
               </div>
             )}
 
             {registryError && (
-              <div style={{
-                marginBottom: 20, padding: "12px 16px", borderRadius: 4, fontSize: 12, fontWeight: 500,
-                background: "rgba(214, 92, 92, 0.08)", border: "1px solid var(--status-error)", color: "var(--status-error)",
-                display: "flex", alignItems: "center", gap: 8
-              }}>
-                <i className="ti ti-alert-triangle" />
-                {registryError}
+              <div style={{ marginBottom: 20 }}>
+                <AlertBanner variant="error">{registryError}</AlertBanner>
               </div>
             )}
 
             {loading && combined.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "60px", color: "var(--text-muted)", fontSize: 13 }}>
-                Connecting to MARS Registry...
-              </div>
+              <EmptyState dashed={false} padding="60px" message="Connecting to MARS Registry..." />
             ) : (
               <>
                 <PackageSection
@@ -323,15 +313,13 @@ function PackageSection({ title, count, emptyText, packages, isInstalling, onIns
       </div>
 
       {packages.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "28px 20px", color: "var(--text-muted)", fontSize: 12, border: "1px dashed var(--border-main)", borderRadius: 4 }}>
-          {emptyText}
-        </div>
+        <EmptyState padding="28px 20px" message={emptyText} />
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
           {packages.map(pkg => (
             <div key={pkg.featureId} style={{
               background: "var(--bg-panel)", border: "1px solid var(--border-main)",
-              borderTop: `3px solid ${pkg.isInstalled ? "var(--status-success)" : "var(--mars-accent, var(--mars-red))"}`,
+              borderTop: `3px solid ${pkg.isInstalled ? "var(--status-success)" : "var(--mars-accent)"}`,
               borderRadius: 4, display: "flex", flexDirection: "column", overflow: "hidden"
             }}>
               <div style={{ padding: "16px", flex: 1 }}>
@@ -362,7 +350,7 @@ function PackageSection({ title, count, emptyText, packages, isInstalling, onIns
                     onClick={() => onInstall(pkg)}
                     disabled={isInstalling}
                     style={{
-                      padding: "6px 14px", background: "var(--mars-accent, var(--mars-red))", border: "none",
+                      padding: "6px 14px", background: "var(--mars-accent)", border: "none",
                       color: "#fff", fontSize: 11, fontWeight: 700, borderRadius: 3, cursor: isInstalling ? "not-allowed" : "pointer"
                     }}
                   >
@@ -382,19 +370,3 @@ function PageShell({ children }: { children: React.ReactNode }) {
   return <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", background: "var(--bg-page)" }}>{children}</div>
 }
 
-function StatRow({ label, value, color }: { label: string, value: string | number, color?: string }) {
-  return (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-      <span style={{ fontSize: 11, color: "var(--text-light)" }}>{label}</span>
-      <span style={{ fontSize: 12, fontWeight: 600, color: color ?? "var(--text-primary)" }}>{value}</span>
-    </div>
-  )
-}
-
-const labelStyle: React.CSSProperties = {
-  display: "block", fontSize: 10, color: "rgba(255,255,255,0.55)", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 8, fontWeight: 600
-}
-
-const inputStyle: React.CSSProperties = {
-  width: "100%", background: "var(--bg-input)", color: "var(--text-primary)", border: "1px solid var(--border-main)", padding: "8px 12px", borderRadius: 3, fontSize: 12, outline: "none", boxSizing: "border-box"
-}

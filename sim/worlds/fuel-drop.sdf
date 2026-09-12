@@ -1,0 +1,154 @@
+<?xml version="1.0" ?>
+<!--
+  Calibracion del rebote del FUEL.
+
+  Existe porque el coeficiente de restitucion de models/fuel/model.sdf es el
+  unico numero del modelo que NO sale del manual: el manual da diametro y masa,
+  pero nada sobre como rebota una pelota de espuma de alta densidad contra
+  alfombra FRC. Esta puesto en 0.35 como punto de partida y hay que medirlo.
+
+  COMO SE USA
+  -----------
+  1. En la vida real: solta un FUEL desde 1.00 m sobre alfombra de FRC y mira
+     a que altura vuelve el primer rebote.
+  2. Corre este mundo y mira el primer rebote de la pelota de la izquierda
+     (tambien cae desde 1.00 m).
+  3. Si no coinciden, el coeficiente que buscas es  e = sqrt(h_rebote / 1.00).
+     Cambialo en models/fuel/model.sdf y repeti.
+
+  Las tres pelotas caen desde alturas distintas a proposito: la restitucion de
+  un material real BAJA con la velocidad de impacto, asi que un valor que
+  clava el rebote desde 1 m puede quedarse corto desde 2.5 m. Si las tres no
+  cuadran con el mismo numero, elegi el que corresponda a las velocidades que
+  te importan --- casi siempre las de un tiro, no las de una caida libre.
+
+  La cuarta rueda por una rampa: es la que dice si la FRICCION esta bien. Con
+  mu correcto rueda; con mu demasiado bajo se desliza y llega abajo girando
+  menos de lo que deberia.
+-->
+<sdf version="1.11">
+  <world name="mars">
+
+    <physics name="250hz" type="ignored">
+      <max_step_size>0.004</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+
+    <plugin filename="gz-sim-physics-system"
+            name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system"
+            name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system"
+            name="gz::sim::systems::SceneBroadcaster"/>
+
+    <gravity>0 0 -9.8</gravity>
+    <scene>
+      <ambient>0.7 0.7 0.7 1</ambient>
+      <background>0.7 0.75 0.8 1</background>
+      <shadows>true</shadows>
+    </scene>
+
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+
+    <!-- Alfombra FRC, con el mismo mu que los mundos de partido: calibrar
+         contra un suelo distinto del que se usa despues no sirve de nada. -->
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><plane><normal>0 0 1</normal></plane></geometry>
+          <surface>
+            <friction><ode><mu>0.9</mu><mu2>0.9</mu2></ode></friction>
+          </surface>
+        </collision>
+        <visual name="visual">
+          <!-- La alfombra se dibuja del tamano de la cancha aunque aqui solo
+               se use un rincon: protocol/check.py exige que el <size> de todo
+               plano coincida con el manifiesto, porque un plano mas chico en
+               un mundo de partido significa poses desplazadas en NT sin ningun
+               error visible. El de colision es infinito y no lo mira nadie. -->
+          <geometry><plane><normal>0 0 1</normal><size>16.54 8.21</size></plane></geometry>
+          <material>
+            <ambient>0.16 0.17 0.19 1</ambient>
+            <diffuse>0.30 0.32 0.36 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Regla vertical: marcas cada 10 cm hasta 1 m, para leer la altura del
+         rebote a ojo en la ventana sin tener que instrumentar nada. -->
+    <model name="ruler">
+      <static>true</static>
+      <pose>-1.0 0.35 0 0 0 0</pose>
+      <link name="link">
+        <visual name="post">
+          <pose>0 0 0.5 0 0 0</pose>
+          <geometry><box><size>0.02 0.02 1.0</size></box></geometry>
+          <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.35 0.35 0.35 1</diffuse></material>
+        </visual>
+        <visual name="m10"><pose>0 0 0.10 0 0 0</pose><geometry><box><size>0.10 0.004 0.004</size></box></geometry><material><diffuse>1 1 1 1</diffuse></material></visual>
+        <visual name="m20"><pose>0 0 0.20 0 0 0</pose><geometry><box><size>0.06 0.004 0.004</size></box></geometry><material><diffuse>1 1 1 1</diffuse></material></visual>
+        <visual name="m30"><pose>0 0 0.30 0 0 0</pose><geometry><box><size>0.10 0.004 0.004</size></box></geometry><material><diffuse>1 1 1 1</diffuse></material></visual>
+        <visual name="m40"><pose>0 0 0.40 0 0 0</pose><geometry><box><size>0.06 0.004 0.004</size></box></geometry><material><diffuse>1 1 1 1</diffuse></material></visual>
+        <visual name="m50"><pose>0 0 0.50 0 0 0</pose><geometry><box><size>0.12 0.006 0.006</size></box></geometry><material><diffuse>1 0.4 0.2 1</diffuse></material></visual>
+        <visual name="m60"><pose>0 0 0.60 0 0 0</pose><geometry><box><size>0.06 0.004 0.004</size></box></geometry><material><diffuse>1 1 1 1</diffuse></material></visual>
+        <visual name="m70"><pose>0 0 0.70 0 0 0</pose><geometry><box><size>0.10 0.004 0.004</size></box></geometry><material><diffuse>1 1 1 1</diffuse></material></visual>
+        <visual name="m80"><pose>0 0 0.80 0 0 0</pose><geometry><box><size>0.06 0.004 0.004</size></box></geometry><material><diffuse>1 1 1 1</diffuse></material></visual>
+        <visual name="m90"><pose>0 0 0.90 0 0 0</pose><geometry><box><size>0.10 0.004 0.004</size></box></geometry><material><diffuse>1 1 1 1</diffuse></material></visual>
+        <visual name="m100"><pose>0 0 1.00 0 0 0</pose><geometry><box><size>0.14 0.006 0.006</size></box></geometry><material><diffuse>1 0.4 0.2 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- La de referencia: 1.00 m, la misma altura que se mide a mano. -->
+    <include>
+      <uri>model://fuel</uri>
+      <name>fuel_drop_1m</name>
+      <pose>-1.0 0 1.0 0 0 0</pose>
+    </include>
+
+    <!-- Media altura y dos veces y media: la restitucion real cae con la
+         velocidad de impacto, y con tres puntos se ve si un solo coeficiente
+         alcanza para el rango que importa. -->
+    <include>
+      <uri>model://fuel</uri>
+      <name>fuel_drop_050</name>
+      <pose>-0.4 0 0.5 0 0 0</pose>
+    </include>
+    <include>
+      <uri>model://fuel</uri>
+      <name>fuel_drop_250</name>
+      <pose>0.2 0 2.5 0 0 0</pose>
+    </include>
+
+    <!-- Rampa de 20 grados para la friccion: rodar o deslizar. -->
+    <model name="ramp">
+      <static>true</static>
+      <pose>1.6 0 0.18 0 -0.349 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>1.2 0.5 0.04</size></box></geometry>
+          <surface>
+            <friction><ode><mu>0.9</mu><mu2>0.9</mu2></ode></friction>
+          </surface>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>1.2 0.5 0.04</size></box></geometry>
+          <material><ambient>0.2 0.22 0.25 1</ambient><diffuse>0.45 0.48 0.55 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <include>
+      <uri>model://fuel</uri>
+      <name>fuel_ramp</name>
+      <pose>1.2 0 0.5 0 0 0</pose>
+    </include>
+
+  </world>
+</sdf>

@@ -1,44 +1,140 @@
 :root {
   /* =========================================
-     MARS FRAMEWORK - COLOR PALETTE (DARK MODE)
+     MARS FRAMEWORK - COLOR PALETTE (LIGHT MODE)
+     Pivote de oscuro a claro: las tres referencias del usuario
+     (AdvantageScope, RViz, MoveIt) son todas de chrome claro/gris neutro,
+     con color reservado para íconos de función y datos en vivo.
   ========================================= */
-  
-  /* Fondos (Backgrounds) */
-  --bg-app: #151413;          /* Fondo base de la app (Súper oscuro) */
-  --bg-page: #1a1918;         /* Fondo de las páginas interiores */
-  --bg-panel: #242220;        /* Tarjetas, inputs y paneles limpios (Gris medio) */
-  --bg-toolbar: #1b1b1e;      /* Barra de herramientas (Ribbon) */
-  --bg-menubar: #0a1483;      /* Barra de menú superior */
-  --bg-input: #0f0e0d;        /* Cajas de texto y QR (Casi negro para contraste) */
-  --bg-dark: #0a0909;         /* Barra de título y barra de estado */
-  
-  /* Textos (Typography) */
-  --text-primary: #e8e6e1;    /* Títulos y texto principal (Blanco suave/Hueso) */
-  --text-secondary: #aaa6a0;  /* Subtítulos y descripciones */
-  --text-muted: #807d78;      /* Labels, placeholders y texto secundario */
-  --text-light: #555350;      /* Texto inactivo o apagado */
-  
-  /* Bordes (Borders) */
-  --border-light: #2c2a28;    /* Tablas y separadores muy sutiles */
-  --border-main: #383532;     /* Bordes de tarjetas e inputs */
-  --border-dark: #4a4642;     /* Separadores de ToolBar y MenuBar */
-  
-  /* Acentos y Marca (Brand & Accents) */
-  --mars-red: #a83c3c;        /* Botones principales (Ligeramente más brillante para contraste) */
-  --mars-accent: #6278f1;
-  --mars-grey: #656566;
-  
-  /* Estados (Status & Hardware) */
-  --status-success: #249b24;
-  --status-error: #ce1919;  
-  --status-warning: #cf961b;  /* Ámbar — usado en Match Time */
-  --status-sim: #20ad20;    
-  --status-real: #1f931f;
-  --module-enabled: #21ac21;  /* Texto de módulos activos */
-  --module-disabled: #cf1414; /* Texto de módulos inactivos */
 
-  --module-enabled: #31cc2e;      /* Verde neón intenso */
-  --module-disabled: #e02020;     /* Rojo escarlata intenso */
+  /* Fondos (Backgrounds) */
+  --bg-app: #ececee;          /* Fondo base de la app (marco exterior) */
+  --bg-page: #ffffff;         /* Fondo de las páginas interiores (el lienzo, el más "quieto") */
+  --bg-panel: #f7f7f8;        /* Sidebars, tarjetas, paneles — un escalón de gris respecto al canvas */
+  --bg-toolbar: #ececee;      /* Barra de herramientas (Ribbon) */
+  --bg-menubar: #f0f0f1;      /* Barra de menú superior / headers de panel */
+  --bg-input: #ffffff;        /* Cajas de texto */
+  --bg-dark: #eeeeef;         /* Barra de título y barra de estado */
+
+  /* Textos (Typography) */
+  --text-primary: #1c1c1f;    /* Títulos y texto principal (casi negro) */
+  --text-secondary: #52525b;  /* Subtítulos y descripciones */
+  --text-muted: #68686f;      /* Labels, placeholders y texto secundario */
+  --text-light: #6f6f76;      /* Texto inactivo o apagado */
+
+  /* Bordes (Borders) */
+  --border-light: #e8e8ea;    /* Tablas y separadores muy sutiles */
+  --border-main: #d4d4d8;     /* Bordes de tarjetas e inputs */
+  --border-dark: #b8b8bf;     /* Separadores de ToolBar y MenuBar */
+
+  /* Acentos y Marca (Brand & Accents) */
+  --mars-red: #a83c3c;
+  --mars-accent: #4a5fd9;
+  --mars-grey: #6b6b70;
+
+  /* Estados (Status & Hardware) */
+  --status-success: #1f7a1f;
+  --status-error: #c21c1c;
+  --status-warning: #a1690a;  /* Ámbar oscurecido para leerse sobre fondo claro */
+  --status-sim: #1c8f1c;
+  --status-real: #1a7f1a;
+  --module-enabled: #1c8f1c;
+  --module-disabled: #c21c1c;
+
+  --status-error-bg: rgba(194, 28, 28, 0.08);
+  --status-error-border: rgba(194, 28, 28, 0.3);
+  --status-warning-bg: rgba(161, 105, 10, 0.1);
+  --status-success-bg: rgba(31, 122, 31, 0.1);
+
+  /* Tipos de dato (Telemetry/Manifest) — oscurecidos respecto a la versión
+     dark-mode (que eran pasteles pensados para resaltar sobre fondo negro) */
+  --type-numeric: var(--status-sim);
+  --type-boolean: var(--mars-red);
+  --type-string: #8a5a08;
+  --type-struct: #0e7490;
+  --type-array: #9333ea;
+
+  /* Texto de headers de página (Sidebar/PanelHeader) */
+  --text-header-eyebrow: #5c5c62;
+  --text-header-title: #1c1c1f;
+  --text-header-subtitle: #6e6e74;
+
+  /* Variantes de ToolbarButton */
+  --variant-green-bg: rgba(28, 143, 28, 0.06);
+  --variant-green-bg-hover: #cceccf;
+  --variant-green-bg-active: #a8dab0;
+  --variant-green-border: #4a9955;
+  --variant-green-border-hover: #6bb878;
+
+  --variant-red-bg: rgba(194, 28, 28, 0.06);
+  --variant-red-bg-hover: #f5cccc;
+  --variant-red-bg-active: #eeb3b3;
+  --variant-red-border: #c25c5c;
+  --variant-red-border-hover: #d17f7f;
+
+  /* Íconos por categoría — cada grupo de la toolbar/Home tiene un acento
+     propio, para wayfinding visual, no decoración (checkeado a >=3:1 sobre
+     --bg-toolbar/--bg-panel). */
+  --icon-cat-file: #1e4fc9;
+  --icon-cat-tools: #0f766e;
+  --icon-cat-modules: #8a5a08;
+  --icon-cat-config: #7c3aed;
+
+  /* StatusBar */
+  --statusbar-idle-bg: rgba(0, 0, 0, 0.05);
+  --statusbar-hover-bg: rgba(0, 0, 0, 0.07);
+  --statusbar-on-fg: #111111;
+  --statusbar-project-bg: #a65200;
+
+  --icon-toolbar: #4a4a50;
+  --toolbar-active-bg: rgba(74, 95, 217, 0.12); /* fondo de la herramienta activa, estilo "selección" de RViz */
+
+  /* Paneles acoplados (Sidebar/Panel): headers en gris más oscuro que el
+     resto del chrome, para separar visualmente cada grupo estilo QDockWidget
+     de RViz (los "Displays"/"MotionPlanning" de la referencia) */
+  --bg-panel-header: #dcdce0;
+  --bg-panel-header-hover: #d0d0d5;
+  --bg-sidebar: #ececef;
+
+  /* Árbol estilo QTreeWidget (el "Displays" de RViz): filas densas, selección
+     azul sólida tipo Windows/Qt, íconos monocromos en gris pizarra en vez de
+     los acentos de categoría (que se veían demasiado "modernos"/saturados). */
+  --tree-row-height: 22px;
+  --icon-tree: #55565c;
+  --tree-hover-bg: #e0e0e4;
+  --tree-selection-bg: #2f6fdb;
+  --tree-selection-fg: #ffffff;
+  --tree-body-bg: #ffffff;
+
+  /* Botones "clásicos" (Add/Rename/Remove de los paneles de RViz):
+     gris plano con borde fino y texto apagado al estar deshabilitados. */
+  --btn-classic-bg: #e9e9ec;
+  --btn-classic-bg-hover: #f4f4f6;
+  --btn-classic-bg-active: #dcdce0;
+  --btn-classic-border: #adadb4;
+  --btn-classic-text-disabled: #a3a3a8;
+
+  /* Grid de fondo (DisplayPage) */
+  --grid-line: rgba(0, 0, 0, 0.055);
+  --grid-line-major: rgba(0, 0, 0, 0.13);
+
+  /* Barra de menú superior: gris oscuro con texto claro. Es la única franja
+     oscura del chrome y sirve de "techo" de la ventana ahora que la fila del
+     título desapareció. */
+  --bg-menubar-dark: #33343a;
+  --bg-menubar-dark-hover: #4a4b53;
+  --bg-menubar-dark-active: #2f6fdb;
+  --text-menubar: #ececed;
+  --text-menubar-dim: #a0a1a8;
+
+  /* Biseles estilo Qt/Win clásico: un borde claro arriba-izquierda y uno
+     oscuro abajo-derecha es lo que da el relieve "antiguo" sin recurrir a
+     sombras difusas. */
+  --bevel-light: #ffffff;
+  --bevel-dark: #9c9ca4;
+
+  /* Sombras */
+  --shadow-soft: rgba(0, 0, 0, 0.1);
+  --shadow-modal: rgba(0, 0, 0, 0.35);
 }
 
 /* =========================================

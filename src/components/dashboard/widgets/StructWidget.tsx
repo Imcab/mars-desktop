@@ -1,16 +1,17 @@
-import React from "react"
-import { STRUCT_DEFS, decodeStructBytes } from "../../../utils/dashboard/valueDecoding"
+import { decodeStructBytes } from "../../../utils/dashboard/valueDecoding"
+import { useStructDef } from "../../../store/structSchemaStore"
 import StructRow from "./StructRow"
+import UnsupportedValue from "../../common/UnsupportedValue"
 
 export default function StructWidget({ rawVal, structName }: { rawVal: any; structName: string }) {
-  const def = STRUCT_DEFS[structName]
+  const def = useStructDef(structName)
   if (!def || !Array.isArray(rawVal)) {
-    return <span style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "monospace" }}>Unsupported struct: {structName}</span>
+    return <UnsupportedValue message={`Unsupported struct: ${structName}`} />
   }
   const fields = decodeStructBytes(rawVal, def)
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%", padding: "0 12px" }}>
-      {fields.map(f => <StructRow key={f.label} label={f.label} val={f.value} suffix={f.suffix} />)}
+      {fields.map(f => <StructRow key={f.label} label={f.label} val={f.text} suffix={f.suffix} />)}
     </div>
   )
 }

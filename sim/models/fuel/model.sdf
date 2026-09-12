@@ -1,0 +1,92 @@
+<?xml version="1.0" ?>
+<!--
+  FUEL: el elemento de puntuacion de REBUILT (FRC 2026).
+
+  Las tres cifras que NO son opinion salen del manual de juego, seccion 5.10.1:
+
+    - diametro 5.91 in = 15.0 cm            ->  radio 0.075 m
+    - masa     0.448-0.500 lb = 0.203-0.227 kg  ->  nominal 0.215 kg
+    - "high density foam ball", AndyMark am-5801
+
+  El color es el del modelo oficial de la cancha: es el baseColorFactor del
+  material que usan sus 456 mallas de Fuel, leido del .glb, no un naranja
+  elegido a ojo.
+
+  La friccion es un PUNTO DE PARTIDA, no una medida; esta explicada abajo y se
+  calibra con worlds/fuel-drop.sdf.
+
+  El rebote NO existe: este build de gz-physics ignora <bounce>. Esta medido,
+  no supuesto --- ver el comentario dentro de <surface>.
+-->
+<sdf version="1.11">
+  <model name="fuel">
+    <link name="link">
+
+      <!--
+        Esfera solida: I = 2/5 * m * r^2 = 0.4 * 0.215 * 0.075^2 = 4.8375e-4.
+
+        Una pelota de espuma es practicamente homogenea, asi que la esfera
+        solida es el modelo correcto y no una simplificacion. Poner una inercia
+        inventada aqui importa mas de lo que parece: es la que decide cuanto
+        gira al rozar contra un rodillo de intake.
+      -->
+      <inertial>
+        <mass>0.215</mass>
+        <inertia>
+          <ixx>4.8375e-4</ixx><ixy>0</ixy><ixz>0</ixz>
+          <iyy>4.8375e-4</iyy><iyz>0</iyz>
+          <izz>4.8375e-4</izz>
+        </inertia>
+      </inertial>
+
+      <collision name="collision">
+        <geometry><sphere><radius>0.075</radius></sphere></geometry>
+        <surface>
+          <friction>
+            <ode>
+              <!--
+                0.85. La espuma de alta densidad agarra mas que un plastico
+                liso y menos que el caucho de una rueda; la alfombra FRC del
+                suelo esta puesta en 0.9. Este valor es el que decide si el
+                FUEL rueda o se arrastra al empujarlo, y si un intake lo
+                arrastra o lo hace patinar.
+              -->
+              <mu>0.85</mu>
+              <mu2>0.85</mu2>
+            </ode>
+          </friction>
+          <!--
+            NO HAY REBOTE, y no es un olvido.
+
+            Aqui habia un <bounce><restitution_coefficient>0.35</...>. Se quito
+            despues de MEDIRLO: con `bridge/src/bin/fuel-bounce.rs` contra
+            worlds/fuel-drop.sdf, las tres pelotas dan e = 0.000 tanto con DART
+            como con bullet-featherstone. Este build de gz-physics ignora
+            <bounce> por completo.
+
+            Dejarlo puesto habria sido peor que no tenerlo: un numero que se
+            puede "afinar" durante una tarde entera sin que cambie nada.
+
+            Consecuencia practica: el FUEL cae y se queda. Para una pelota de
+            espuma sobre alfombra eso se parece bastante a la realidad, pero
+            NO sirve para estudiar un tiro que rebota en el borde del HUB.
+            Conseguir rebote de verdad requiere fijar la restitucion por
+            contacto desde un system en C++ (gz-physics expone
+            SetContactPropertiesCallbackFeature); seria trabajo para MarsLink,
+            no una etiqueta del SDF.
+          -->
+        </surface>
+      </collision>
+
+      <visual name="visual">
+        <geometry><sphere><radius>0.075</radius></sphere></geometry>
+        <material>
+          <ambient>0.38 0.24 0.02 1</ambient>
+          <diffuse>0.956 0.597 0.056 1</diffuse>
+          <specular>0.05 0.05 0.05 1</specular>
+        </material>
+      </visual>
+
+    </link>
+  </model>
+</sdf>

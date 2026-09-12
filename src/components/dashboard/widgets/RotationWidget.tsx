@@ -1,7 +1,7 @@
-import React from "react"
 import { readDoubleLE } from "../../../utils/dashboard/valueDecoding"
 import CompassDial from "./CompassDial"
 import StructRow from "./StructRow"
+import UnsupportedValue from "../../common/UnsupportedValue"
 
 interface Props {
   rawVal: any
@@ -13,7 +13,7 @@ interface Props {
 // WPILib de Rotation2d siempre serializa en radianes.
 export default function RotationWidget({ rawVal, style, unit }: Props) {
   if (!Array.isArray(rawVal) || rawVal.length < 8) {
-    return <span style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "monospace" }}>Unsupported struct: Rotation2d</span>
+    return <UnsupportedValue message="Unsupported struct: Rotation2d" />
   }
 
   const radians = readDoubleLE(rawVal, 0)
@@ -28,7 +28,7 @@ export default function RotationWidget({ rawVal, style, unit }: Props) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%", padding: "0 12px" }}>
-      <StructRow label="θ" val={displayValue} suffix={suffix} />
+      <StructRow label="θ" val={displayValue.toFixed(2)} suffix={suffix} />
     </div>
   )
 }

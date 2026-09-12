@@ -1,5 +1,5 @@
-import React, { useState } from "react"
-import { DashboardWidget } from "../../store/appStore"
+import { useState } from "react"
+import { DashboardWidget, TopicAnnounce } from "../../store/appStore"
 import { unpackLiveValue } from "../../utils/dashboard/valueDecoding"
 import { classifyTopic } from "../../utils/dashboard/topicClassification"
 import CardSettingsPanel from "./settings/CardSettingsPanel"
@@ -8,6 +8,9 @@ import WidgetRenderer from "./widgets/WidgetRenderer"
 interface Props {
   widget: DashboardWidget
   liveValue?: any
+  /** Solo lo usan los widgets que leen una TABLA entera (Field2d), que no
+   *  tienen un `liveValue` propio porque su raíz no es un topic. */
+  topics: Map<string, TopicAnnounce>
   onRemove: () => void
   onUpdate: (updates: Partial<DashboardWidget>) => void
 }
@@ -18,7 +21,7 @@ interface Props {
 // ./widgets/*, y toda la lógica de cada formulario de settings vive en
 // ./settings/*. Para agregar un widget nuevo no hace falta tocar este archivo
 // salvo, quizás, WidgetRenderer.tsx.
-export default function DashboardCard({ widget, liveValue, onRemove, onUpdate }: Props) {
+export default function DashboardCard({ widget, liveValue, topics, onRemove, onUpdate }: Props) {
   const [isEditingLabel, setIsEditingLabel] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [editLabel, setEditLabel] = useState(widget.label)
@@ -40,7 +43,7 @@ export default function DashboardCard({ widget, liveValue, onRemove, onUpdate }:
     <div style={{ background: "var(--bg-panel)", border: "1px solid var(--border-main)", borderRadius: 4, display: "flex", flexDirection: "column", height: "100%", width: "100%", overflow: "hidden", position: "relative" }}>
 
       {/* CABECERA (Funciona como manija para mover) */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 8px", borderBottom: "1px solid var(--border-main)", background: "var(--bg-dark)", cursor: "grab" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 8px", borderBottom: "1px solid var(--border-main)", background: "var(--bg-menubar)", cursor: "grab" }}>
         {isEditingLabel ? (
           <input
             autoFocus value={editLabel} onChange={e => setEditLabel(e.target.value)}
@@ -71,8 +74,8 @@ export default function DashboardCard({ widget, liveValue, onRemove, onUpdate }:
       {isSettingsOpen ? (
         <CardSettingsPanel widget={widget} classification={classification} onSave={handleSaveSettings} />
       ) : (
-        <div style={{ flex: 1, padding: (classification.isNumericArray || classification.isStructArray) ? 0 : 12, display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
-          <WidgetRenderer widget={widget} rawVal={rawVal} classification={classification} />
+        <div style={{ flex: 1, padding: (classification.isNumericArray || classification.isTextArray || classification.isStructArray || classification.isField2d) ? 0 : 12, display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
+          <WidgetRenderer widget={widget} rawVal={rawVal} classification={classification} topics={topics} />
         </div>
       )}
     </div>

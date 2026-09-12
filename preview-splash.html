@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/mars.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MARS — Modular Architecture for Robot Systems</title>
+
+    <!--
+      La pantalla de carga vive acá y no en React a propósito: el bundle pesa
+      un par de MB y hay que descargarlo, parsearlo y evaluarlo ANTES de que
+      React pinte su primer cuadro. Cualquier splash escrito en React aparece
+      justo cuando ya no hace falta. Este, en cambio, se pinta con el HTML.
+
+      El esqueleto está acá; los pasos y el porcentaje los rellena
+      src/utils/splash.ts conforme el arranque ocurre de verdad.
+    -->
+    <style>
+      #mars-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #ececee;
+        font-family: "Segoe UI", system-ui, Arial, sans-serif;
+        transition: opacity 260ms ease;
+      }
+      #mars-splash.mars-splash-out {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .mars-splash-card {
+        width: min(88vw, 540px);
+        padding: 22px 24px 20px;
+        background: #ffffff;
+        border-top: 1px solid #ffffff;
+        border-left: 1px solid #ffffff;
+        border-right: 1px solid #9c9ca4;
+        border-bottom: 1px solid #9c9ca4;
+        box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.1);
+        animation: mars-splash-pop 420ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
+      }
+      /* El logotipo es la marca completa, así que no lleva un título al lado:
+         repetir "MARS" en texto debajo del wordmark solo lo dice dos veces.
+         Grande a propósito, como el splash de MATLAB o Wolfram: el logo ES la
+         pantalla, y al lado va lo único que hace falta saber además del
+         nombre, que es qué versión se está abriendo. */
+      .mars-splash-head {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+      }
+      .mars-splash-head img {
+        display: block;
+        width: min(42vw, 270px);
+        height: auto;
+      }
+      .mars-splash-version {
+        padding-left: 20px;
+        border-left: 1px solid #d4d4d8;
+        font-size: 34px;
+        font-weight: 300;
+        line-height: 1;
+        letter-spacing: -0.01em;
+        color: #a83c3c;
+        font-variant-numeric: tabular-nums;
+      }
+      .mars-splash-sub {
+        margin: 14px 0 18px;
+        font-size: 11px;
+        color: #68686f;
+      }
+
+      .mars-splash-bar {
+        height: 6px;
+        border-radius: 3px;
+        overflow: hidden;
+        background: #f7f7f8;
+        border: 1px solid #d4d4d8;
+      }
+      /* Determinada, no indeterminada: la anterior era una barra que se
+         deslizaba sola y solo decía "sigue trabajando". Esta cuenta los pasos
+         reales del arranque, así que el porcentaje significa algo. */
+      .mars-splash-bar span {
+        display: block;
+        width: 0;
+        height: 100%;
+        background: #a83c3c;
+        transition: width 220ms ease;
+      }
+
+      .mars-splash-line {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        margin-top: 7px;
+        font-size: 11.5px;
+        color: #52525b;
+      }
+      #mars-splash-pct {
+        margin-left: auto;
+        font-family: Consolas, "Cascadia Mono", monospace;
+        font-size: 10.5px;
+        color: #68686f;
+        font-variant-numeric: tabular-nums;
+      }
+
+      /* La lista de pasos no es decoración: hasta que el arranque no termina
+         no existe ninguna otra superficie donde escribir, así que si algo
+         tarda o falla, esto es lo único que lo dice. */
+      #mars-splash-steps {
+        list-style: none;
+        margin: 14px 0 0;
+        padding: 0;
+      }
+      #mars-splash-steps li {
+        display: flex;
+        align-items: baseline;
+        gap: 7px;
+        font-size: 11px;
+        line-height: 1.9;
+        color: #6f6f76;
+      }
+      #mars-splash-steps li .mark {
+        width: 12px;
+        flex-shrink: 0;
+        text-align: center;
+        font-family: Consolas, "Cascadia Mono", monospace;
+        font-weight: 700;
+      }
+      #mars-splash-steps li em {
+        margin-left: auto;
+        font-style: normal;
+        font-size: 10px;
+        font-family: Consolas, "Cascadia Mono", monospace;
+        color: #68686f;
+      }
+      #mars-splash-steps li[data-state="running"] { color: #1c1c1f; font-weight: 600; }
+      #mars-splash-steps li[data-state="running"] .mark { color: #4a5fd9; }
+      #mars-splash-steps li[data-state="ok"] { color: #52525b; }
+      #mars-splash-steps li[data-state="ok"] .mark { color: #1f7a1f; }
+      #mars-splash-steps li[data-state="skip"] .mark { color: #b8b8bf; }
+      #mars-splash-steps li[data-state="fail"] { color: #c21c1c; font-weight: 600; }
+      #mars-splash-steps li[data-state="fail"] .mark { color: #c21c1c; }
+
+      #mars-splash-error {
+        display: none;
+        margin-top: 14px;
+        padding: 9px 11px;
+        border: 1px solid rgba(194, 28, 28, 0.3);
+        background: rgba(194, 28, 28, 0.08);
+        color: #c21c1c;
+        font-size: 11px;
+        line-height: 1.55;
+        font-family: Consolas, "Cascadia Mono", monospace;
+        border-radius: 3px;
+        max-height: 22vh;
+        overflow: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+        -webkit-user-select: text;
+        user-select: text;
+      }
+
+      @keyframes mars-splash-pop {
+        from { opacity: 0; transform: scale(0.985); }
+        to   { opacity: 1; transform: scale(1); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .mars-splash-card { animation: none; }
+        .mars-splash-bar span { transition: none; }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="mars-splash">
+      <div class="mars-splash-card">
+        <!-- v0.9.0 lo sustituye el plugin `mars-version` de
+             vite.config.ts con la constante de src/constants/version.ts. -->
+        <div class="mars-splash-head">
+          <img src="/marsblacklogo2.png" alt="MARS" />
+          <div class="mars-splash-version">v0.9.0</div>
+        </div>
+        <div class="mars-splash-sub">Modular Architecture for Robot Systems</div>
+
+        <div class="mars-splash-bar"><span id="mars-splash-fill"></span></div>
+        <div class="mars-splash-line">
+          <span id="mars-splash-step">Starting…</span>
+          <span id="mars-splash-pct">0%</span>
+        </div>
+
+        <ol id="mars-splash-steps"></ol>
+        <div id="mars-splash-error"></div>
+      </div>
+    </div>
+
+    <div id="root"></div>
+    <script>
+      // Maqueta solo para revisar el splash sin arrancar la app.
+      const rows = [
+        ["Read preferences", "ok", "✓", "team 4400"],
+        ["Locate the MARS project", "ok", "✓", "Reefscape2026"],
+        ["Scan 3D asset packs", "ok", "✓", "3 packs"],
+        ["Restore the workspace", "running", "›", ""],
+        ["Check the NetworkTables link", "pending", "·", ""],
+        ["Build the interface", "pending", "·", ""],
+      ];
+      const list = document.getElementById("mars-splash-steps");
+      for (const [label, state, mark, note] of rows) {
+        const li = document.createElement("li");
+        li.dataset.state = state;
+        li.innerHTML = '<span class="mark">' + mark + '</span><span>' + label + '</span><em>' + note + '</em>';
+        list.appendChild(li);
+      }
+      document.getElementById("mars-splash-fill").style.width = "50%";
+      document.getElementById("mars-splash-pct").textContent = "50%";
+      document.getElementById("mars-splash-step").textContent = "Restore the workspace…";
+    </script>
+  </body>
+</html>

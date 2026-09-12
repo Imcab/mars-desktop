@@ -1,0 +1,70 @@
+<?xml version="1.0" ?>
+<!--
+  Mundo mínimo para la prueba de vida de la fase 0: suelo, luz y física.
+  La cancha FRC real va en su propio .sdf cuando el entorno ya compile.
+-->
+<sdf version="1.11">
+  <world name="mars">
+
+    <!-- 250 Hz. Los ciclos de WPILib van a 50 Hz (20 ms), así que cinco pasos
+         de física por ciclo de robot: suficiente resolución para que las
+         ruedas no atraviesen el suelo sin que el paso se vuelva caro. -->
+    <physics name="250hz" type="ignored">
+      <max_step_size>0.004</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+
+    <!-- Physics resuelve la dinámica. UserCommands permite spawn/borrado en
+         caliente (game pieces). SceneBroadcaster publica el estado del mundo
+         por gz-transport: es el tópico del que va a leer el bridge. -->
+    <plugin filename="gz-sim-physics-system"
+            name="gz::sim::systems::Physics">
+      <!-- Por defecto DART. Si en Windows da problemas, la alternativa es:
+      <engine><filename>gz-physics-bullet-featherstone-plugin</filename></engine>
+      -->
+    </plugin>
+    <plugin filename="gz-sim-user-commands-system"
+            name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system"
+            name="gz::sim::systems::SceneBroadcaster"/>
+
+    <gravity>0 0 -9.8</gravity>
+
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><plane><normal>0 0 1</normal></plane></geometry>
+          <surface>
+            <friction>
+              <ode>
+                <!-- Alfombra FRC. Valor de arranque: hay que calibrarlo
+                     contra datos reales del robot antes de confiar en él. -->
+                <mu>0.9</mu>
+                <mu2>0.9</mu2>
+              </ode>
+            </friction>
+          </surface>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <plane><normal>0 0 1</normal><size>16.54 8.21</size></plane>
+          </geometry>
+          <material>
+            <ambient>0.2 0.2 0.2 1</ambient>
+            <diffuse>0.3 0.3 0.3 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+  </world>
+</sdf>

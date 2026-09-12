@@ -1,8 +1,8 @@
 [package]
 name = "mars-desktop"
-version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
+version = "1.1.3"
+description = "MARS Desktop - dashboard de NetworkTables para FRC"
+authors = ["STZ Robotics"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -14,6 +14,19 @@ edition = "2021"
 name = "mars_desktop_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+# --- Ediciones -------------------------------------------------------------
+#
+# `mars` (por defecto) trae el framework: generacion de subsistemas y features,
+# mapa de fuentes Java y el lanzador del Simulation Studio.
+#
+# La edicion Tools se construye con `--no-default-features` y no compila nada
+# de eso: es la app de NetworkTables sola. Ver src/mars/README.md.
+[features]
+default = ["mars"]
+# `regex` solo lo usan el mapa de fuentes Java y la lectura del Manifest, que
+# son del framework: en la edicion Tools ni se baja ni se compila.
+mars = ["dep:regex"]
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
@@ -22,7 +35,18 @@ tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2"
 dirs = "5"
-regex = "1.12.4"
+regex = { version = "1.12.4", optional = true }
+base64 = "0.22"   # exportar el PNG del gráfico, que viaja como data URL
+
+# Descarga e instalación de los assets 3D del Field 3D. Van en Rust y no en el
+# front porque GitHub no manda cabeceras CORS en sus releases: un `fetch` desde
+# el webview falla siempre, sin importar la CSP.
+#
+# rustls con las raíces del SISTEMA a propósito: muchos equipos trabajan detrás
+# del proxy de su escuela, que reemplaza los certificados por los suyos. Con las
+# raíces embebidas de webpki, toda descarga fallaría ahí.
+reqwest = { version = "0.13", default-features = false, features = ["rustls", "rustls-native-certs", "charset", "http2", "system-proxy"] }
+zip = { version = "2", default-features = false, features = ["deflate"] }
 
 # Dependencias de red y asincronía (NT4)
 tokio = { version = "1.36", features = ["full"] }

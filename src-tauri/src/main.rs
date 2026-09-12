@@ -1,19 +1,57 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod assets3d;
 mod nt4;
+
+// --- Ediciones -------------------------------------------------------------
+//
+// Todo lo que necesita el framework MARS vive detras de la feature `mars`,
+// activa por defecto. La edicion Tools se compila con `--no-default-features`
+// y estos modulos, sus comandos y sus dependencias no entran al binario: no es
+// un boton escondido, es codigo que no se compila. El front hace lo mismo con
+// el alias `@mars` (ver src/mars/README.md).
+#[cfg(feature = "mars")]
+mod feature_gen;
+#[cfg(feature = "mars")]
+mod simlauncher;
+#[cfg(feature = "mars")]
+mod source_map;
+#[cfg(feature = "mars")]
 mod subsystem_gen;
 
 use std::fs;
 use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
-use std::process::Command;
 use std::path::Path;
+
+// Solo los usan los comandos del framework (clonar la plantilla, leer el
+// Manifest.java, correr gradle). Sin la feature `mars` no hay quien los use.
+#[cfg(feature = "mars")]
 use std::collections::HashMap;
+#[cfg(feature = "mars")]
+use std::process::Command;
+#[cfg(feature = "mars")]
 use regex::Regex;
 
 use nt4::client::{NT4Client, NT4State};
 use std::sync::Arc;
 use tokio::sync::Mutex;
+
+/// Destino del servidor NT4. Determina el puerto al que se conecta la app:
+/// el roboRIO/simulador publica en 5810, la Driver Station reexpone los datos
+/// en 6767 (en localhost) y Systemcore usa 6810.
+pub const NT_PORT_DEFAULT: u16 = 5810;
+pub const NT_PORT_DS: u16 = 6767;
+pub const NT_PORT_SYSTEMCORE: u16 = 6810;
+
+/// Techo para `read_binary_file`. Una malla de robot bien hecha pesa unos
+/// pocos MB; mas alla de esto casi seguro se eligio el archivo equivocado y
+/// cargarlo dejaria la webview sin memoria.
+const MAX_MODEL_BYTES: u64 = 256 * 1024 * 1024;
+
+fn default_nt_target() -> String { "default".to_string() }
+fn default_nt_retention_minutes() -> u32 { 15 }
+fn default_nt_custom_port() -> u16 { NT_PORT_DEFAULT }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct MarsSettings {
@@ -21,6 +59,32 @@ pub struct MarsSettings {
     pub workspace_path: String,
     pub tools_path: String,
     pub auto_save_deploy: bool,
+
+    // Los campos de NT4 llevan #[serde(default)] a propósito: sin eso, un
+    // config.json escrito por una versión anterior no deserializa y el
+    // fallback a Default borraría el equipo y las rutas ya guardadas.
+    /// "default" | "ds" | "systemcore" | "custom"
+    #[serde(default = "default_nt_target")]
+    pub nt_target: String,
+    /// Puerto usado solo cuando nt_target == "custom".
+    #[serde(default = "default_nt_custom_port")]
+    pub nt_custom_port: u16,
+    /// Reemplaza la dirección derivada del número de equipo. Vacío = usar el
+    /// equipo. Sirve para USB (172.22.11.2), mDNS o una IP fija de pruebas.
+    #[serde(default)]
+    pub nt_custom_address: String,
+    /// Minutos de historial que guarda el buffer. 0 = sin límite.
+    #[serde(default = "default_nt_retention_minutes")]
+    pub nt_retention_minutes: u32,
+
+    // Identidad para publicar features. Se guarda acá y no en el wizard para
+    // que el segundo paquete que haga el equipo salga ya prellenado.
+    /// Nombre que va en el campo `author` de MarsFeature.json.
+    #[serde(default)]
+    pub feature_author: String,
+    /// Usuario u organización de GitHub bajo la que se publican las features.
+    #[serde(default)]
+    pub github_user: String,
 }
 
 impl Default for MarsSettings {
@@ -31,8 +95,40 @@ impl Default for MarsSettings {
             workspace_path: String::new(),
             tools_path: home.join("MARSTools").to_string_lossy().to_string(),
             auto_save_deploy: true,
+            nt_target: default_nt_target(),
+            nt_custom_port: default_nt_custom_port(),
+            nt_custom_address: String::new(),
+            nt_retention_minutes: default_nt_retention_minutes(),
+            feature_author: String::new(),
+            github_user: String::new(),
         }
     }
+}
+
+impl MarsSettings {
+    /// Puerto NT4 efectivo según el destino elegido.
+    pub fn nt_port(&self) -> u16 {
+        match self.nt_target.as_str() {
+            "ds" => NT_PORT_DS,
+            "systemcore" => NT_PORT_SYSTEMCORE,
+            "custom" => self.nt_custom_port,
+            _ => NT_PORT_DEFAULT,
+        }
+    }
+}
+
+/// Lectura de la config sin pasar por el comando de Tauri, para que el módulo
+/// NT4 pueda resolver dirección y puerto sin que el front tenga que mandarlos
+/// en cada `connect`.
+pub fn load_mars_settings() -> MarsSettings {
+    let path = get_mars_config_path();
+    if !path.exists() {
+        return MarsSettings::default();
+    }
+    fs::read_to_string(&path)
+        .ok()
+        .and_then(|content| serde_json::from_str(&content).ok())
+        .unwrap_or_else(MarsSettings::default)
 }
 
 fn get_mars_config_path() -> PathBuf {
@@ -48,19 +144,53 @@ fn get_mars_config_path() -> PathBuf {
 
 #[tauri::command]
 fn read_mars_settings() -> Result<MarsSettings, String> {
-    let path = get_mars_config_path();
-    
-    if !path.exists() {
-        return Ok(MarsSettings::default());
+    Ok(load_mars_settings())
+}
+
+// --- Workspace (pestañas + su configuración) --------------------------------
+//
+// Sin esto todo el estado de la app vive solo en memoria de React: los tabs,
+// los widgets del Display, las fuentes del Swerve y del Mechanism se pierden al
+// cerrar. El layout se guarda como JSON opaco a propósito -- el shape lo define
+// el front (WorkspaceTab), y el backend no tiene por qué conocerlo.
+
+fn workspace_path(path: Option<String>) -> PathBuf {
+    match path {
+        Some(p) if !p.trim().is_empty() => PathBuf::from(p),
+        _ => {
+            let config_dir = dirs::config_dir().unwrap_or_else(|| dirs::home_dir().unwrap_or_default());
+            let mars_dir = config_dir.join("MARS");
+            if !mars_dir.exists() {
+                let _ = fs::create_dir_all(&mars_dir);
+            }
+            mars_dir.join("workspace.json")
+        }
     }
+}
 
-    let content = fs::read_to_string(&path)
-        .map_err(|e| format!("Error reading config.json: {}", e))?;
+#[tauri::command]
+fn save_workspace(layout: serde_json::Value, path: Option<String>) -> Result<String, String> {
+    let target = workspace_path(path);
+    let json = serde_json::to_string_pretty(&layout)
+        .map_err(|e| format!("Error serializing layout: {}", e))?;
+    fs::write(&target, json)
+        .map_err(|e| format!("Error saving layout: {}", e))?;
+    Ok(target.display().to_string())
+}
 
-    let settings: MarsSettings = serde_json::from_str(&content)
-        .unwrap_or_else(|_| MarsSettings::default());
-
-    Ok(settings)
+/// `Ok(None)` = todavía no hay layout guardado, que NO es un error: es lo que
+/// pasa la primera vez que se abre la app.
+#[tauri::command]
+fn load_workspace(path: Option<String>) -> Result<Option<serde_json::Value>, String> {
+    let target = workspace_path(path);
+    if !target.exists() {
+        return Ok(None);
+    }
+    let content = fs::read_to_string(&target)
+        .map_err(|e| format!("Error reading layout: {}", e))?;
+    serde_json::from_str(&content)
+        .map(Some)
+        .map_err(|e| format!("Layout file is corrupt: {}", e))
 }
 
 #[tauri::command]
@@ -76,6 +206,7 @@ fn write_mars_settings(settings: MarsSettings) -> Result<(), String> {
     Ok(())
 }
 
+#[cfg(feature = "mars")]
 #[tauri::command]
 async fn create_mars_project(project_name: String, workspace_path: String, team_number: String) -> Result<String, String> {
     let target_path = PathBuf::from(&workspace_path).join(&project_name);
@@ -123,6 +254,61 @@ async fn create_mars_project(project_name: String, workspace_path: String, team_
     Ok(format!("Proyect created at {}", workspace_path))
 }
 
+/// Escribe un archivo binario desde base64. Se usa para el PNG del gráfico
+/// (un canvas solo sabe devolver un data URL) y para el JSON de gains. Va en
+/// base64 y no como Vec<u8> porque por IPC eso se convertiría en un array
+/// JSON de cientos de miles de números.
+#[tauri::command]
+fn save_base64_file(path: String, base64_data: String) -> Result<String, String> {
+    use base64::Engine;
+
+    // El front puede mandar el data URL completo o solo la carga útil.
+    let payload = base64_data
+        .split_once(",")
+        .map(|(_, rest)| rest)
+        .unwrap_or(&base64_data);
+
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(payload)
+        .map_err(|e| format!("Invalid image data: {}", e))?;
+
+    fs::write(&path, bytes).map_err(|e| format!("Could not save image: {}", e))?;
+    Ok(path)
+}
+
+/// Lee un archivo binario del disco y lo devuelve como bytes crudos.
+/// Se usa para los modelos 3D (.stl/.glb) que el usuario elige con el dialog:
+/// van por `ipc::Response` y no como Vec<u8> porque eso se serializaria a un
+/// array JSON de millones de numeros para una malla de unos pocos MB.
+#[tauri::command]
+fn read_binary_file(path: String) -> Result<tauri::ipc::Response, String> {
+    let meta = fs::metadata(&path).map_err(|e| format!("Could not open {}: {}", path, e))?;
+    if meta.len() > MAX_MODEL_BYTES {
+        return Err(format!(
+            "File is too large ({:.1} MB); the limit is {} MB.",
+            meta.len() as f64 / 1_048_576.0,
+            MAX_MODEL_BYTES / 1_048_576,
+        ));
+    }
+
+    let bytes = fs::read(&path).map_err(|e| format!("Could not read {}: {}", path, e))?;
+    Ok(tauri::ipc::Response::new(bytes))
+}
+
+/// Escribe un archivo de texto UTF-8. Lo usa el export de configuraciones
+/// (por ahora el del Mechanism 3D), que son JSON legibles y no binarios: pasar
+/// por `save_base64_file` obligaria a codificar y decodificar sin motivo.
+#[tauri::command]
+fn write_text_file(path: String, contents: String) -> Result<String, String> {
+    if let Some(parent) = Path::new(&path).parent() {
+        if !parent.exists() {
+            fs::create_dir_all(parent).map_err(|e| format!("Could not create {}: {}", parent.display(), e))?;
+        }
+    }
+    fs::write(&path, contents).map_err(|e| format!("Could not write {}: {}", path, e))?;
+    Ok(path)
+}
+
 #[tauri::command]
 fn get_local_ip() -> Result<String, String> {
 
@@ -140,6 +326,7 @@ fn get_local_ip() -> Result<String, String> {
     }
 }
 
+#[cfg(feature = "mars")]
 #[tauri::command]
 fn validate_mars_project(path: String) -> Result<String, String> {
     let p = Path::new(&path);
@@ -157,6 +344,7 @@ fn validate_mars_project(path: String) -> Result<String, String> {
     Ok(name)
 }
 
+#[cfg(feature = "mars")]
 #[tauri::command]
 fn read_project_units(project_path: String) -> Result<String, String> {
     let path = PathBuf::from(project_path).join("ProjectUnits.json");
@@ -168,6 +356,7 @@ fn read_project_units(project_path: String) -> Result<String, String> {
     fs::read_to_string(path).map_err(|e| format!("Error leyendo el archivo de unidades: {}", e))
 }
 
+#[cfg(feature = "mars")]
 #[tauri::command]
 fn read_manifest_features(project_path: String) -> Result<HashMap<String, bool>, String> {
     // Construimos la ruta asumiendo la estructura estándar de FRC
@@ -202,6 +391,7 @@ fn read_manifest_features(project_path: String) -> Result<HashMap<String, bool>,
     Ok(features)
 }
 
+#[cfg(feature = "mars")]
 #[tauri::command]
 fn get_installed_packages(project_path: String) -> Result<Vec<serde_json::Value>, String> {
     let features_dir = PathBuf::from(&project_path).join("workspace-mars").join("features");
@@ -223,6 +413,7 @@ fn get_installed_packages(project_path: String) -> Result<Vec<serde_json::Value>
     Ok(packages)
 }
 
+#[cfg(feature = "mars")]
 #[tauri::command]
 async fn install_package_from_json(project_path: String, feature_data: String) -> Result<String, String> {
     // 1. Parsear y extraer el ID
@@ -263,32 +454,81 @@ async fn install_package_from_json(project_path: String, feature_data: String) -
 
 }
 
-fn main() {
-    let nt4_state = NT4State(Arc::new(Mutex::new(NT4Client::new())));
-    tauri::Builder::default()
-        .plugin(tauri_plugin_dialog::init())
-        .manage(nt4_state)
-        .invoke_handler(tauri::generate_handler![
+/// Registra el handler de comandos con la lista base mas los que le pasen.
+///
+/// `tauri::generate_handler!` no acepta atributos por linea, y un builder solo
+/// admite UN `invoke_handler` (el segundo reemplaza al primero, sin avisar).
+/// Por eso la lista base vive en una macro y cada edicion la invoca una vez
+/// con sus comandos extra, en lugar de duplicar cuarenta nombres.
+macro_rules! registrar_comandos {
+    ($builder:expr $(, $extra:path)* $(,)?) => {
+        $builder.invoke_handler(tauri::generate_handler![
             read_mars_settings,
             write_mars_settings,
-            create_mars_project,
+            save_workspace,
+            load_workspace,
+            save_base64_file,
+            read_binary_file,
+            write_text_file,
             get_local_ip,
-            validate_mars_project,
-            read_project_units,
-            read_manifest_features,
-            get_installed_packages,
-            install_package_from_json,
-            subsystem_gen::derive_java_package,
-            subsystem_gen::check_unit_processor,
-            subsystem_gen::generate_mars_subsystem,
+            assets3d::asset3d_store_dir,
+            assets3d::list_asset3d_packs,
+            assets3d::install_asset3d_zip,
+            assets3d::download_asset3d,
+            assets3d::import_asset3d_folder,
+            assets3d::delete_asset3d_pack,
             nt4::commands::connect_sim,
             nt4::commands::connect_real,
             nt4::commands::disconnect_nt,
             nt4::commands::get_live_values,
             nt4::commands::get_values_at,
             nt4::commands::get_values_range,
-            nt4::commands::get_time_bounds
+            nt4::commands::get_time_bounds,
+            nt4::commands::set_value,
+            nt4::commands::unpublish_value,
+            nt4::commands::get_jitter_stats,
+            nt4::commands::set_buffer_retention_minutes,
+            nt4::commands::get_nt_link_status,
+            nt4::commands::get_bandwidth_report,
+            nt4::commands::export_wpilog,
+            nt4::commands::open_wpilog,
+            nt4::commands::close_log
+            $(, $extra)*
         ])
+    };
+}
+
+fn main() {
+    let nt4_state = NT4State(Arc::new(Mutex::new(NT4Client::new())));
+    let builder = tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_opener::init())
+        .manage(nt4_state);
+
+    #[cfg(feature = "mars")]
+    let builder = registrar_comandos!(
+        builder,
+        create_mars_project,
+        validate_mars_project,
+        read_project_units,
+        read_manifest_features,
+        get_installed_packages,
+        install_package_from_json,
+        subsystem_gen::derive_java_package,
+        subsystem_gen::check_unit_processor,
+        subsystem_gen::generate_mars_subsystem,
+        feature_gen::create_mars_feature,
+        feature_gen::read_project_vendordeps,
+        simlauncher::sim_app_disponible,
+        simlauncher::abrir_sim_app,
+        source_map::find_topic_source,
+        source_map::open_in_editor,
+    );
+
+    #[cfg(not(feature = "mars"))]
+    let builder = registrar_comandos!(builder);
+
+    builder
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

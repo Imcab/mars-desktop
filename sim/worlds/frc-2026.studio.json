@@ -1,0 +1,60 @@
+{
+  "archivo": "frc-2026",
+  "descripcion": "The 2026 REBUILT field as a visual, with carpet friction and perimeter walls.",
+  "paso": 0.004,
+  "rtf": 1.0,
+  "motor_fisica": "dart",
+  "gravedad": -9.8,
+  "suelo": true,
+  "friccion": 0.9,
+  "friccion2": 0.9,
+  "cancha_largo": 16.54,
+  "cancha_ancho": 8.21,
+  "color_suelo": [
+    0.35,
+    0.35,
+    0.38,
+    1.0
+  ],
+  "campo": "fields/2026-rebuilt/model.glb",
+  "campo_pose": [
+    0.0,
+    0.0,
+    0.0,
+    1.5707963267948966,
+    0.0,
+    0.0
+  ],
+  "campo_escala": 1.0,
+  "muros": true,
+  "muro_alto": 0.5,
+  "muro_grosor": 0.1,
+  "sol": true,
+  "sombras": true,
+  "sol_direccion": [
+    -0.5,
+    0.1,
+    -0.9
+  ],
+  "sol_intensidad": 0.8,
+  "ambiente": 0.75,
+  "fondo": [
+    0.7,
+    0.75,
+    0.8
+  ],
+  "comandos_usuario": true,
+  "sensores": false,
+  "imu_system": false,
+  "plugins_extra": [],
+  "robot_uri": "",
+  "robot_pose": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "props": []
+}

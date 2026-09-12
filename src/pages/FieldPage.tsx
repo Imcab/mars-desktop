@@ -1,0 +1,447 @@
+import React, { useMemo, useRef, useState } from "react"
+import {
+  TopicAnnounce, FieldObjectConfig, FieldSettings, FieldOrientation,
+} from "../store/appStore"
+import { useSelectionStore } from "../store/selectionStore"
+import { useNTSnapshot } from "../utils/nt/useNTSnapshot"
+import { extractPoses } from "../utils/field/poseExtraction"
+import { extractModuleStates } from "../utils/field/swerveExtraction"
+import {
+  FIELDS, SCHEMATIC_FIELD_KEY, getField, COORDINATE_SYSTEM_LABELS, CoordinateSystem,
+} from "../utils/field/fieldImages"
+import { FIELD2D_TYPE, field2dTopicNames, isField2dTable } from "../utils/field/field2d"
+import {
+  defaultObjectTypeFor, isFieldDroppable, nextObjectLabel, resolveObjectOptions,
+} from "../utils/field/fieldObjects"
+import { HistoryStore } from "../utils/field/poseHistory"
+import { pickModelFile, fileNameOf } from "../utils/field/robotModel"
+import { forgetSprites } from "../utils/field/robotSprite"
+import { useRobotSprite } from "../hooks/useRobotSprite"
+import { useTableTypeStore } from "../store/tableTypeStore"
+import DataDirectoryPanel from "../components/dashboard/DataDirectoryPanel"
+import FieldCanvas, { RenderedObject } from "../components/dashboard/field/FieldCanvas"
+import FieldObjectPanel from "../components/dashboard/field/FieldObjectPanel"
+import FieldViewPanel from "../components/dashboard/field/FieldViewPanel"
+import PanelHeader from "../components/layout/PanelHeader"
+import StatusBadge from "../components/common/StatusBadge"
+import SidebarIcon from "../components/common/SidebarIcon"
+
+interface Props {
+  topics: Map<string, TopicAnnounce>
+  objects: FieldObjectConfig[]
+  settings: FieldSettings
+  onAddObject: (o: Omit<FieldObjectConfig, "id">) => string
+  onRemoveObject: (id: string) => void
+  onUpdateObject: (id: string, updates: Partial<FieldObjectConfig>) => void
+  onUpdateSettings: (updates: Partial<FieldSettings>) => void
+}
+
+const OBJECT_COLORS = ["#2f6fdb", "#d63b3b", "#1f9e4a", "#d4a94a", "#8a4fd1", "#0e9aa7"]
+
+const ORIENTATIONS: FieldOrientation[] = [0, 90, 180, 270]
+const COORDINATE_SYSTEMS: CoordinateSystem[] = ["wall_blue", "center", "center_rotated"]
+
+export default function FieldPage({
+  topics, objects, settings,
+  onAddObject, onRemoveObject, onUpdateObject, onUpdateSettings,
+}: Props) {
+  const [isDragOver, setIsDragOver] = useState(false)
+  const [panel, setPanel] = useState<"objects" | "field">("objects")
+  const [measureMode, setMeasureMode] = useState(false)
+  const [resetToken, setResetToken] = useState(0)
+  const isLive = useSelectionStore(s => s.isLive)
+  const tableTypes = useTableTypeStore(s => s.types)
+
+  // El historial vive en la PÁGINA y no en el canvas: el panel lateral tiene
+  // que poder contar las muestras y vaciarlas, y el canvas se vuelve a montar
+  // cada vez que cambia la cancha.
+  const historyRef = useRef<HistoryStore | null>(null)
+  if (historyRef.current === null) historyRef.current = new HistoryStore()
+  const history = historyRef.current
+
+  const { sprite, scale: spriteScale, status: spriteStatus, error: spriteError } = useRobotSprite(settings)
+
+  const field = getField(settings.fieldKey)
+  // El JSON de la cancha dice en qué marco publica el robot; el override
+  // existe porque un equipo puede estar publicando en otro y la pose sale
+  // espejada. Es más rápido cambiarlo acá que editar el JSON.
+  const coordinateSystem: CoordinateSystem =
+    settings.coordinateSystem ?? field?.coordinateSystem ?? "wall_blue"
+
+  // Un solo poll para todos los topics dibujados; useNTSnapshot ya resuelve si
+  // pedir el valor en vivo o el del instante scrubbeado en la timeline.
+  // El Set no es cosmético: el mismo topic puede estar en varios objetos (el
+  // chasis y su mapa de calor), y sin él se lo pediría una vez por objeto.
+  const topicNames = useMemo(
+    () => Array.from(new Set(objects.map(o => o.topicName))),
+    [objects],
+  )
+  const liveValues = useNTSnapshot(topicNames, 33)
+
+  const rendered: RenderedObject[] = useMemo(() => (
+    objects.map(obj => {
+      const value = liveValues[obj.topicName]
+      return {
+        id: obj.id,
+        type: obj.type,
+        color: obj.color,
+        label: obj.label,
+        // Un objeto swerve no trae poses: se dibuja anclado al robot, y lo que
+        // necesita del topic son los estados de los cuatro módulos.
+        poses: obj.type === "swerve" ? [] : extractPoses(value, obj.topicType),
+        modules: obj.type === "swerve" ? extractModuleStates(value, obj.topicType) : undefined,
+        options: resolveObjectOptions(obj, settings),
+      }
+    })
+  ), [objects, liveValues, settings])
+
+  // El historial se llena por fuera de React (lo escribe el canvas), así que
+  // el conteo se rehace en cada poll: `liveValues` está en las dependencias
+  // como disparador, no porque se lo use acá.
+  const sampleCounts = useMemo(() => {
+    const out: Record<string, number> = {}
+    objects.forEach(obj => { out[obj.id] = history.get(obj.id).length })
+    return out
+  }, [objects, liveValues, history])
+
+  const totalSamples = Object.values(sampleCounts).reduce((acc, n) => acc + n, 0)
+  const poseCount = rendered.reduce((acc, o) => acc + o.poses.length, 0)
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = "copy"
+    if (!isDragOver) setIsDragOver(true)
+  }
+  const handleDragLeave = () => setIsDragOver(false)
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragOver(false)
+
+    const topicName = e.dataTransfer.getData("topicName")
+    const topicType = e.dataTransfer.getData("topicType")
+    if (!topicName) return
+
+    // Una tabla Field2d entera: se expande en un objeto por cada topic que
+    // cuelga de ella, así cada uno queda editable por separado en el panel.
+    if (topicType === FIELD2D_TYPE) {
+      addField2dTable(topicName)
+      return
+    }
+
+    // Doble candado: el árbol ya filtra por tipo, se revalida por si el drop
+    // viniera de otro origen.
+    if (!isFieldDroppable(topicType)) return
+
+    // A propósito NO se descarta un topic que ya está en la lista: soltar la
+    // misma pose dos veces es lo que permite verla como chasis y como mapa de
+    // calor a la vez. Publicarla dos veces desde el robot solo para conseguir
+    // eso sería gastar ancho de banda de más. Misma regla que en Functions.
+    const usedColors = new Set(objects.map(o => o.color))
+    const color = OBJECT_COLORS.find(c => !usedColors.has(c)) ?? OBJECT_COLORS[objects.length % OBJECT_COLORS.length]
+
+    onAddObject({
+      topicName,
+      topicType,
+      label: nextObjectLabel(objects, topicName),
+      type: defaultObjectTypeFor(topicName, topicType),
+      color,
+    })
+  }
+
+  const addField2dTable = (prefix: string) => {
+    const used = new Set(objects.map(o => o.color))
+    let colorIndex = 0
+    const nextColor = () => {
+      const free = OBJECT_COLORS.find(c => !used.has(c))
+      const color = free ?? OBJECT_COLORS[colorIndex % OBJECT_COLORS.length]
+      used.add(color)
+      colorIndex++
+      return color
+    }
+
+    for (const topicName of field2dTopicNames(topics, prefix)) {
+      const topic = topics.get(topicName)
+      if (!topic) continue
+
+      const leaf = topicName.slice(prefix.length + 1)
+      const isRobot = leaf === "Robot"
+      // El "Robot" del Field2d es el robot; para el resto vale la misma
+      // heurística de nombre y forma que se usa al soltar un topic suelto.
+      const type = isRobot ? ("robot" as const) : defaultObjectTypeFor(topicName, topic.topic_type)
+
+      const base = isRobot ? prefix.split("/").filter(Boolean).pop() ?? leaf : leaf
+
+      onAddObject({
+        topicName,
+        topicType: topic.topic_type,
+        label: nextObjectLabel(objects, topicName, base),
+        type: type === "robot" && !isRobot ? "ghost" : type,
+        color: isRobot ? OBJECT_COLORS[0] : nextColor(),
+      })
+    }
+  }
+
+  /**
+   * Segunda vista del MISMO topic. Arranca como mapa de calor cuando se
+   * duplica un chasis, que es el caso por el que uno duplica: ver dónde está
+   * el robot y por dónde anduvo, sin publicar la pose dos veces.
+   */
+  const handleDuplicate = (id: string) => {
+    const source = objects.find(o => o.id === id)
+    if (!source) return
+
+    const used = new Set(objects.map(o => o.color))
+    const color = OBJECT_COLORS.find(c => !used.has(c)) ?? source.color
+    const { id: _drop, ...rest } = source
+
+    const newId = onAddObject({
+      ...rest,
+      label: nextObjectLabel(objects, source.topicName),
+      type: source.type === "robot" || source.type === "ghost" ? "heatmap" : source.type,
+      color,
+    })
+    // El duplicado hereda lo acumulado: si no, el mapa de calor nuevo
+    // arrancaría vacío aunque el original llevara media práctica juntando.
+    history.copy(id, newId)
+  }
+
+  const handlePickModel = async () => {
+    const path = await pickModelFile("Select the robot model")
+    if (path === null) return
+    // Los bitmaps del modelo anterior ya no sirven para nada y pueden ser
+    // varios (uno por color y por giro).
+    if (settings.robotModelPath) forgetSprites(settings.robotModelPath)
+    onUpdateSettings({
+      robotModelPath: path,
+      robotModelName: fileNameOf(path),
+      robotRender: "model",
+    })
+  }
+
+  const handleClearModel = () => {
+    if (settings.robotModelPath) forgetSprites(settings.robotModelPath)
+    onUpdateSettings({ robotModelPath: null, robotModelName: null, robotRender: "icon" })
+  }
+
+  return (
+    <div style={{ display: "flex", width: "100%", height: "100%", background: "var(--bg-page)", overflow: "hidden" }}>
+
+      {/* SIDEBAR: DATA DIRECTORY, solo topics con geometría o módulos swerve */}
+      <DataDirectoryPanel
+        topics={topics}
+        hint="Pose structs · [x, y, θ] double arrays · SwerveModuleState[] · whole Field2d tables"
+        dragFilter={(t) => isFieldDroppable(t.topic_type)}
+        folderDragType={(fullPath) => (isField2dTable(tableTypes, fullPath) ? FIELD2D_TYPE : null)}
+      />
+
+      {/* MAIN: CANCHA + PANELES */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <PanelHeader
+          title="2D Visualizer"
+          meta={`${objects.length} objects · ${poseCount} poses · scroll to zoom, drag to pan, double-click to reset`}
+          action={
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <StatusBadge color={isLive ? "var(--status-sim)" : "var(--mars-red)"} label={isLive ? "LIVE" : "VIEWING HISTORY"} />
+
+              <Control label="FIELD">
+                <select
+                  value={settings.fieldKey}
+                  onChange={e => onUpdateSettings({ fieldKey: e.target.value })}
+                  style={selectStyle}
+                >
+                  {FIELDS.map(f => (
+                    <option key={f.key} value={f.key}>{f.game} ({f.program})</option>
+                  ))}
+                  <option value={SCHEMATIC_FIELD_KEY}>Schematic (no image)</option>
+                </select>
+              </Control>
+
+              <Control label="COORDS">
+                <select
+                  value={settings.coordinateSystem ?? "auto"}
+                  onChange={e => onUpdateSettings({
+                    coordinateSystem: e.target.value === "auto" ? null : e.target.value as CoordinateSystem,
+                  })}
+                  style={selectStyle}
+                >
+                  <option value="auto">
+                    Auto ({COORDINATE_SYSTEM_LABELS[coordinateSystem].split(" (")[0]})
+                  </option>
+                  {COORDINATE_SYSTEMS.map(s => (
+                    <option key={s} value={s}>{COORDINATE_SYSTEM_LABELS[s]}</option>
+                  ))}
+                </select>
+              </Control>
+
+              <Control label="ROTATION">
+                <select
+                  value={settings.orientation}
+                  onChange={e => onUpdateSettings({ orientation: Number(e.target.value) as FieldOrientation })}
+                  style={selectStyle}
+                >
+                  {ORIENTATIONS.map(o => <option key={o} value={o}>{o}°</option>)}
+                </select>
+              </Control>
+
+              <div style={{ display: "flex", gap: 4 }}>
+                <ToggleButton
+                  svg="alliance-flip.svg"
+                  icon="ti-flip-horizontal"
+                  title="Red alliance view (flips the field half a turn)"
+                  active={settings.allianceFlip}
+                  onClick={() => onUpdateSettings({ allianceFlip: !settings.allianceFlip })}
+                />
+                <ToggleButton
+                  svg="grid.svg"
+                  icon="ti-grid-dots"
+                  title="Grid"
+                  active={settings.showGrid}
+                  onClick={() => onUpdateSettings({ showGrid: !settings.showGrid })}
+                />
+                <ToggleButton
+                  svg="measure.svg"
+                  icon="ti-ruler-measure"
+                  title="Measure: drag on the field to get distance and bearing (Esc clears)"
+                  active={measureMode}
+                  onClick={() => setMeasureMode(m => !m)}
+                />
+                <ToggleButton
+                  svg="home.svg"
+                  icon="ti-focus-centered"
+                  title="Reset zoom and pan"
+                  active={false}
+                  onClick={() => setResetToken(t => t + 1)}
+                />
+              </div>
+            </div>
+          }
+        />
+
+        <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+          <div
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            style={{
+              flex: 1, padding: 12, boxSizing: "border-box", overflow: "hidden",
+              background: isDragOver ? "var(--bg-panel)" : "var(--bg-page)",
+              border: isDragOver ? "1px dashed var(--mars-red)" : "1px solid transparent",
+            }}
+          >
+            <FieldCanvas
+              objects={rendered}
+              settings={settings}
+              field={field}
+              coordinateSystem={coordinateSystem}
+              sprite={sprite}
+              spriteScale={spriteScale}
+              measureMode={measureMode}
+              resetToken={resetToken}
+              history={history}
+            />
+          </div>
+
+          <div style={{
+            width: 288, borderLeft: "1px solid var(--border-main)", background: "var(--bg-panel)",
+            flexShrink: 0, display: "flex", flexDirection: "column", minHeight: 0,
+          }}>
+            <div style={{ display: "flex", borderBottom: "1px solid var(--border-main)", flexShrink: 0 }}>
+              <Tab label={`Objects (${objects.length})`} active={panel === "objects"} onClick={() => setPanel("objects")} />
+              <Tab label="Field" active={panel === "field"} onClick={() => setPanel("field")} />
+            </div>
+
+            <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
+              {panel === "objects" ? (
+                <FieldObjectPanel
+                  objects={objects}
+                  settings={settings}
+                  sampleCounts={sampleCounts}
+                  onUpdate={onUpdateObject}
+                  onDuplicate={handleDuplicate}
+                  onRemove={onRemoveObject}
+                  onClearHistory={id => history.clear(id)}
+                />
+              ) : (
+                <FieldViewPanel
+                  settings={settings}
+                  onUpdate={onUpdateSettings}
+                  sprite={sprite}
+                  spriteScale={spriteScale}
+                  status={spriteStatus}
+                  error={spriteError}
+                  onPickModel={handlePickModel}
+                  onClearModel={handleClearModel}
+                  totalSamples={totalSamples}
+                  onClearHistory={() => history.clear()}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const selectStyle: React.CSSProperties = {
+  background: "var(--bg-input)",
+  color: "var(--text-primary)",
+  border: "1px solid var(--border-main)",
+  padding: "3px 6px",
+  borderRadius: 2,
+  fontSize: 11,
+  outline: "none",
+}
+
+function Control({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <span style={{ fontSize: 10, color: "var(--text-header-eyebrow)" }}>{label}</span>
+      {children}
+    </div>
+  )
+}
+
+function ToggleButton({
+  svg, icon, title, active, onClick,
+}: { svg?: string; icon: string; title: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      style={{
+        display: "flex", alignItems: "center", justifyContent: "center",
+        width: 24, height: 24, cursor: "pointer", borderRadius: 2, fontSize: 13,
+        background: active ? "var(--toolbar-active-bg)" : "var(--bg-input)",
+        color: active ? "var(--mars-accent)" : "var(--text-muted)",
+        border: `1px solid ${active ? "var(--mars-accent)" : "var(--border-main)"}`,
+      }}
+    >
+      <SidebarIcon
+        svg={svg}
+        fallback={icon}
+        size={14}
+        color={active ? "var(--mars-accent)" : "var(--text-muted)"}
+      />
+    </button>
+  )
+}
+
+function Tab({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        flex: 1, padding: "7px 8px", cursor: "pointer", fontSize: 10.5, fontWeight: 600,
+        letterSpacing: 0.4, textTransform: "uppercase",
+        background: active ? "var(--bg-panel)" : "var(--bg-panel-header)",
+        color: active ? "var(--text-primary)" : "var(--text-muted)",
+        border: "none",
+        borderBottom: `2px solid ${active ? "var(--mars-accent)" : "transparent"}`,
+      }}
+    >
+      {label}
+    </button>
+  )
+}

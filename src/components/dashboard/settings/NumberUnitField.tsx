@@ -1,4 +1,3 @@
-import React from "react"
 import { labelStyle, inputStyle, NUMBER_UNIT_OPTIONS } from "../DashboardCard.styles"
 
 export default function NumberUnitField({ value, onChange }: { value: string; onChange: (v: string) => void }) {

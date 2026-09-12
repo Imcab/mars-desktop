@@ -1,0 +1,213 @@
+<?xml version="1.0" ?>
+<!--
+  Robot de pruebas: chasis de 40 kg y cuatro ruedas motrices, sin dirección.
+
+  Es skid-steer y no swerve a propósito. Con cuatro joints en vez de ocho, y
+  sin lazo de dirección, prueba exactamente lo mismo del protocolo (comandos
+  entran, par se aplica, estado sale) con la mitad de superficie donde
+  equivocarse. El swerve viene cuando este lazo esté cerrado.
+
+  El robot va definido dentro del mundo en lugar de en sim/models/ para no
+  depender todavía de GZ_SIM_RESOURCE_PATH: una variable de entorno menos que
+  puede estar mal puesta mientras se depura el lazo.
+-->
+<sdf version="1.11">
+  <world name="mars">
+
+    <physics name="250hz" type="ignored">
+      <max_step_size>0.004</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+
+    <plugin filename="gz-sim-physics-system"
+            name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system"
+            name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system"
+            name="gz::sim::systems::SceneBroadcaster"/>
+
+    <gravity>0 0 -9.8</gravity>
+
+    <light type="directional" name="sun">
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+
+    <!--
+      Sin muros de perimetro todavia. El <size> del visual dibuja la cancha,
+      pero un <plane> de COLISION es infinito, asi que el robot puede salirse
+      del campo conduciendo y nada lo detiene. Para probar el lazo da igual;
+      para simular un partido hara falta el perimetro.
+    -->
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><plane><normal>0 0 1</normal></plane></geometry>
+          <surface>
+            <friction><ode><mu>0.9</mu><mu2>0.9</mu2></ode></friction>
+          </surface>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <plane><normal>0 0 1</normal><size>16.54 8.21</size></plane>
+          </geometry>
+          <material>
+            <ambient>0.2 0.2 0.2 1</ambient>
+            <diffuse>0.3 0.3 0.3 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="robot">
+      <pose>0 0 0 0 0 0</pose>
+
+      <link name="chassis">
+        <pose>0 0 0.15 0 0 0</pose>
+        <inertial>
+          <mass>40.0</mass>
+          <!-- Caja de 0.7 x 0.6 x 0.15: I = m/12 * (a^2 + b^2) por eje. -->
+          <inertia>
+            <ixx>1.275</ixx><iyy>1.708</iyy><izz>2.833</izz>
+            <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz>
+          </inertia>
+        </inertial>
+        <collision name="collision">
+          <geometry><box><size>0.7 0.6 0.15</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.7 0.6 0.15</size></box></geometry>
+          <material>
+            <ambient>0.1 0.1 0.12 1</ambient>
+            <diffuse>0.15 0.16 0.2 1</diffuse>
+          </material>
+        </visual>
+      </link>
+
+      <!-- Ruedas de 3 pulgadas (r = 0.0762 m), 1 kg. Cilindro con el eje en
+           Y: I_axial = m*r^2/2, I_perp = m*(3r^2 + h^2)/12. -->
+      <link name="fl_wheel">
+        <pose>0.25 0.3 0.0762 -1.5707963 0 0</pose>
+        <inertial>
+          <mass>1.0</mass>
+          <inertia>
+            <ixx>0.00166</ixx><iyy>0.00166</iyy><izz>0.0029</izz>
+            <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz>
+          </inertia>
+        </inertial>
+        <collision name="collision">
+          <geometry><cylinder><radius>0.0762</radius><length>0.05</length></cylinder></geometry>
+          <surface>
+            <friction><ode><mu>1.1</mu><mu2>1.1</mu2></ode></friction>
+          </surface>
+        </collision>
+        <visual name="visual">
+          <geometry><cylinder><radius>0.0762</radius><length>0.05</length></cylinder></geometry>
+          <material><diffuse>0.8 0.35 0.1 1</diffuse></material>
+        </visual>
+      </link>
+
+      <link name="fr_wheel">
+        <pose>0.25 -0.3 0.0762 -1.5707963 0 0</pose>
+        <inertial>
+          <mass>1.0</mass>
+          <inertia>
+            <ixx>0.00166</ixx><iyy>0.00166</iyy><izz>0.0029</izz>
+            <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz>
+          </inertia>
+        </inertial>
+        <collision name="collision">
+          <geometry><cylinder><radius>0.0762</radius><length>0.05</length></cylinder></geometry>
+          <surface>
+            <friction><ode><mu>1.1</mu><mu2>1.1</mu2></ode></friction>
+          </surface>
+        </collision>
+        <visual name="visual">
+          <geometry><cylinder><radius>0.0762</radius><length>0.05</length></cylinder></geometry>
+          <material><diffuse>0.8 0.35 0.1 1</diffuse></material>
+        </visual>
+      </link>
+
+      <link name="bl_wheel">
+        <pose>-0.25 0.3 0.0762 -1.5707963 0 0</pose>
+        <inertial>
+          <mass>1.0</mass>
+          <inertia>
+            <ixx>0.00166</ixx><iyy>0.00166</iyy><izz>0.0029</izz>
+            <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz>
+          </inertia>
+        </inertial>
+        <collision name="collision">
+          <geometry><cylinder><radius>0.0762</radius><length>0.05</length></cylinder></geometry>
+          <surface>
+            <friction><ode><mu>1.1</mu><mu2>1.1</mu2></ode></friction>
+          </surface>
+        </collision>
+        <visual name="visual">
+          <geometry><cylinder><radius>0.0762</radius><length>0.05</length></cylinder></geometry>
+          <material><diffuse>0.8 0.35 0.1 1</diffuse></material>
+        </visual>
+      </link>
+
+      <link name="br_wheel">
+        <pose>-0.25 -0.3 0.0762 -1.5707963 0 0</pose>
+        <inertial>
+          <mass>1.0</mass>
+          <inertia>
+            <ixx>0.00166</ixx><iyy>0.00166</iyy><izz>0.0029</izz>
+            <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz>
+          </inertia>
+        </inertial>
+        <collision name="collision">
+          <geometry><cylinder><radius>0.0762</radius><length>0.05</length></cylinder></geometry>
+          <surface>
+            <friction><ode><mu>1.1</mu><mu2>1.1</mu2></ode></friction>
+          </surface>
+        </collision>
+        <visual name="visual">
+          <geometry><cylinder><radius>0.0762</radius><length>0.05</length></cylinder></geometry>
+          <material><diffuse>0.8 0.35 0.1 1</diffuse></material>
+        </visual>
+      </link>
+
+      <!-- El eje es Z del link de la rueda, que la rotación -90 grados en X
+           del <pose> deja apuntando a lo largo de Y del robot. -->
+      <joint name="fl_drive_joint" type="revolute">
+        <parent>chassis</parent><child>fl_wheel</child>
+        <axis><xyz>0 0 1</xyz><limit><lower>-1e16</lower><upper>1e16</upper></limit></axis>
+      </joint>
+      <joint name="fr_drive_joint" type="revolute">
+        <parent>chassis</parent><child>fr_wheel</child>
+        <axis><xyz>0 0 1</xyz><limit><lower>-1e16</lower><upper>1e16</upper></limit></axis>
+      </joint>
+      <joint name="bl_drive_joint" type="revolute">
+        <parent>chassis</parent><child>bl_wheel</child>
+        <axis><xyz>0 0 1</xyz><limit><lower>-1e16</lower><upper>1e16</upper></limit></axis>
+      </joint>
+      <joint name="br_drive_joint" type="revolute">
+        <parent>chassis</parent><child>br_wheel</child>
+        <axis><xyz>0 0 1</xyz><limit><lower>-1e16</lower><upper>1e16</upper></limit></axis>
+      </joint>
+
+      <!-- El ORDEN de estos <actuator> es el contrato: define el índice
+           dentro de gz.msgs.Actuators.normalized. El robot-map del bridge
+           lista los suyos en el mismo orden y check.py lo verifica.
+
+           NINGUNA rueda va invertida. En un robot real se invierte un lado
+           porque los motores estan montados en espejo, pero aqui los cuatro
+           links tienen la misma rotacion (-90 grados en X), asi que sus ejes
+           apuntan igual y el mismo signo los hace rodar en la misma
+           direccion. Invertir el lado derecho hace que el robot gire sobre
+           si mismo en vez de avanzar. -->
+      <plugin filename="MarsLink" name="mars::MarsLink">
+        <actuator joint="fl_drive_joint" motor="kraken_x60" gearRatio="6.75"/>
+        <actuator joint="fr_drive_joint" motor="kraken_x60" gearRatio="6.75"/>
+        <actuator joint="bl_drive_joint" motor="kraken_x60" gearRatio="6.75"/>
+        <actuator joint="br_drive_joint" motor="kraken_x60" gearRatio="6.75"/>
+      </plugin>
+    </model>
+
+  </world>
+</sdf>

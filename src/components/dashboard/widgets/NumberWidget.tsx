@@ -1,4 +1,3 @@
-import React from "react"
 import { unitSuffix } from "../DashboardCard.styles"
 import TextValueWidget from "./TextValueWidget"
 import BarWidget from "./BarWidget"

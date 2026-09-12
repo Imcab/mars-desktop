@@ -1,0 +1,57 @@
+# MARS Installer: la aplicacion que instala, actualiza y desinstala el
+# ecosistema MARS en la maquina del equipo.
+#
+# No comparte workspace con mars-desktop ni con el Studio a proposito: tiene
+# que poder compilarse y publicarse sin tocar nada de los productos que
+# instala, y sobre todo tiene que SOBREVIVIRLOS --- se queda en disco despues
+# de la instalacion para poder desinstalar.
+#
+# No lleva toolchain de node. Su UI son modulos ES sueltos en ui/, igual que el
+# Simulation Studio: un instalador que arrastra un bundler para cinco pantallas
+# seria mas pesado que lo que instala.
+[package]
+name = "mars-installer"
+version = "1.0.0"
+description = "Instalador de MARS Desktop y su ecosistema"
+authors = ["STZ Robotics"]
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+dirs = "5"
+sha2 = "0.10"
+tokio = { version = "1", features = ["full"] }
+futures-util = "0.3"
+
+# Misma configuracion de TLS que mars-desktop y por la misma razon: muchos
+# equipos trabajan detras del proxy de su escuela, que reemplaza los
+# certificados. Con las raices embebidas de webpki toda descarga fallaria ahi.
+# `stream` es lo que permite reportar progreso mientras baja.
+reqwest = { version = "0.13", default-features = false, features = ["rustls", "rustls-native-certs", "charset", "http2", "system-proxy", "stream", "json"] }
+
+# Los formatos de archivo se eligen por plataforma, asi que las librerias
+# tambien: el instalador de Windows nunca va a abrir un .tar.gz y viceversa.
+[target.'cfg(windows)'.dependencies]
+zip = { version = "2", default-features = false, features = ["deflate"] }
+winreg = "0.52"
+
+[target.'cfg(not(windows))'.dependencies]
+tar = "0.4"
+flate2 = "1"
+
+# El instalador se distribuye como UN ejecutable y la gente lo baja por
+# internet: cada MB cuenta y no hay build incremental que optimizar.
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

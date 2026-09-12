@@ -1,5 +1,12 @@
 import { useState, useEffect, useMemo } from "react"
 import { invoke } from "@tauri-apps/api/core"
+import PageHeader from "../components/layout/PageHeader"
+import PanelHeader from "../components/layout/PanelHeader"
+import EmptyState from "../components/common/EmptyState"
+import DangerButton from "../components/common/DangerButton"
+import Panel from "../components/common/Panel"
+import PropertyRow from "../components/common/PropertyRow"
+import { propertyInputStyle } from "../styles/pageForm"
 
 interface Props {
   projectName: string | null
@@ -88,67 +95,54 @@ export default function ManifestPage({ projectName, projectPath }: Props) {
 
       {/* SIDEBAR */}
       <div style={{ width: 300, background: "var(--bg-panel)", borderRight: "1px solid var(--border-main)", display: "flex", flexDirection: "column", flexShrink: 0 }}>
-        <div style={{ padding: "24px 20px", borderBottom: "1px solid var(--border-light)", background: "var(--bg-panel)" }}>
-          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.55)", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 4 }}>
-            Hardware Manifest
-          </div>
-          <div style={{ fontSize: 18, fontWeight: 600, color: "#fff" }}>
-            Active Modules
-          </div>
-          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 4, lineHeight: 1.4 }}>
-            Project: <span style={{ color: "var(--mars-accent, var(--mars-red))", fontWeight: 600 }}>{projectName.toUpperCase()}</span><br />
-            Manifest.java parser
-          </div>
-        </div>
+        <PageHeader
+          eyebrow="Hardware Manifest"
+          title="Active Modules"
+          subtitle={
+            <>
+              Project: <span style={{ color: "var(--mars-accent)", fontWeight: 600 }}>{projectName.toUpperCase()}</span><br />
+              Manifest.java parser
+            </>
+          }
+        />
 
-        <div style={{ padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20, overflowY: "auto" }}>
+        <div style={{ padding: "24px 20px", display: "flex", flexDirection: "column", gap: 24, overflowY: "auto" }}>
 
-          <div>
-            <label style={labelStyle}>SEARCH MODULE</label>
-            <div style={{ position: "relative" }}>
-              <i className="ti ti-search" style={{ position: "absolute", left: 10, top: 8, color: "var(--text-muted)", fontSize: 14 }} />
-              <input
-                type="text"
-                placeholder="e.g. drivetrain..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ ...inputStyle, paddingLeft: 32 }}
-              />
+          <Panel title="Filters" icon="ti-filter">
+            <div>
+              <PropertyRow label="Search module">
+                <input
+                  type="text"
+                  placeholder="e.g. drivetrain..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={propertyInputStyle}
+                />
+              </PropertyRow>
+              <PropertyRow label="Module status">
+                <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as any)} style={propertyInputStyle}>
+                  <option value="all">All Modules</option>
+                  <option value="enabled">Enabled Only</option>
+                  <option value="disabled">Disabled Only</option>
+                </select>
+              </PropertyRow>
             </div>
-          </div>
+            {hasActiveFilters && (
+              <div style={{ padding: 8 }}>
+                <DangerButton onClick={() => { setSearchQuery(""); setStatusFilter("all") }}>
+                  CLEAR ALL FILTERS
+                </DangerButton>
+              </div>
+            )}
+          </Panel>
 
-          <div>
-            <label style={labelStyle}>MODULE STATUS</label>
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as any)} style={inputStyle}>
-              <option value="all">All Modules</option>
-              <option value="enabled">Enabled Only</option>
-              <option value="disabled">Disabled Only</option>
-            </select>
-          </div>
-
-          {hasActiveFilters && (
-            <button
-              onClick={() => { setSearchQuery(""); setStatusFilter("all") }}
-              style={{
-                padding: "8px 0", background: "rgba(214, 92, 92, 0.1)",
-                border: "1px solid rgba(214, 92, 92, 0.3)", borderRadius: 3,
-                color: "var(--status-error)", fontSize: 11, fontWeight: 600, cursor: "pointer",
-              }}
-            >
-              CLEAR ALL FILTERS
-            </button>
-          )}
-
-          <div style={{ height: 1, background: "var(--border-light)", margin: "4px 0" }} />
-
-          <div>
-            <label style={{ ...labelStyle, marginBottom: 12 }}>MODULE STATISTICS</label>
-            <div style={{ background: "var(--bg-input)", border: "1px solid var(--border-main)", borderRadius: 4, padding: "12px", display: "flex", flexDirection: "column", gap: 8 }}>
-              <StatRow label="Total modules" value={stats.total} />
-              <StatRow label="Enabled" value={stats.enabled} color="var(--module-enabled)" />
-              <StatRow label="Disabled" value={stats.disabled} color="var(--text-muted)" />
+          <Panel title="Module Statistics" icon="ti-chart-bar">
+            <div>
+              <PropertyRow label="Total modules"><span>{stats.total}</span></PropertyRow>
+              <PropertyRow label="Enabled"><span style={{ color: "var(--module-enabled)" }}>{stats.enabled}</span></PropertyRow>
+              <PropertyRow label="Disabled"><span style={{ color: "var(--text-muted)" }}>{stats.disabled}</span></PropertyRow>
             </div>
-          </div>
+          </Panel>
 
         </div>
       </div>
@@ -156,21 +150,16 @@ export default function ManifestPage({ projectName, projectPath }: Props) {
       {/* MAIN */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
-        <div style={{ height: 48, background: "var(--bg-menubar)", borderBottom: "1px solid var(--border-main)", display: "flex", alignItems: "center", padding: "0 24px", gap: 16, flexShrink: 0 }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: "#fff" }}>Detected Modules</span>
-          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.55)" }}>
-            {stats.total} total · {stats.enabled} enabled · {stats.disabled} disabled
-          </span>
-        </div>
+        <PanelHeader
+          title="Detected Modules"
+          meta={`${stats.total} total · ${stats.enabled} enabled · ${stats.disabled} disabled`}
+        />
 
         <div style={{ flex: 1, padding: "24px 24px 40px", overflowY: "auto" }}>
           <div style={{ width: "100%", maxWidth: 800, margin: "0 auto" }}>
 
             {filteredFeatures && Object.keys(filteredFeatures).length === 0 && (
-              <div style={{ textAlign: "center", padding: "60px 40px", color: "var(--text-muted)", fontSize: 13, border: "1px dashed var(--border-main)", borderRadius: 4 }}>
-                <i className="ti ti-blocks" style={{ fontSize: 32, display: "block", marginBottom: 12, opacity: 0.5 }} />
-                No modules match your current filters.
-              </div>
+              <EmptyState icon="ti-blocks" message="No modules match your current filters." />
             )}
 
             {enabledEntries.length > 0 && (
@@ -217,19 +206,3 @@ function ModuleSection({ title, entries }: { title: string, entries: [string, bo
   )
 }
 
-function StatRow({ label, value, color }: { label: string, value: string | number, color?: string }) {
-  return (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-      <span style={{ fontSize: 11, color: "var(--text-light)" }}>{label}</span>
-      <span style={{ fontSize: 12, fontWeight: 600, color: color ?? "var(--text-primary)" }}>{value}</span>
-    </div>
-  )
-}
-
-const labelStyle: React.CSSProperties = {
-  display: "block", fontSize: 10, color: "rgba(255,255,255,0.55)", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 8, fontWeight: 600
-}
-
-const inputStyle: React.CSSProperties = {
-  width: "100%", background: "var(--bg-input)", color: "var(--text-primary)", border: "1px solid var(--border-main)", padding: "8px 12px", borderRadius: 3, fontSize: 12, outline: "none", cursor: "pointer", boxSizing: "border-box"
-}

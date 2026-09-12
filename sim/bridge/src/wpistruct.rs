@@ -1,0 +1,91 @@
+//! Serialización de los structs de WPILib que publica el bridge.
+//!
+//! Un tópico `struct:Pose2d` en NT4 lleva bytes crudos en little-endian, sin
+//! cabecera ni longitud: el consumidor sabe leerlos porque antes leyó el
+//! descriptor publicado en `/.schema/struct:Pose2d`. Publicar el valor sin su
+//! schema deja a la app con un blob que no puede decodificar.
+//!
+//! Los layouts están fijados contra `STRUCT_DEFS` de
+//! `src/utils/dashboard/valueDecoding.ts`, que es el ground truth de la app y
+//! tiene sus propios tests contra los 21 tipos de WPILib.
+
+/// Un schema que hay que publicar antes de usar el tipo.
+pub struct Schema {
+    pub name: &'static str,
+    pub descriptor: &'static str,
+}
+
+/// Todos los schemas de los que dependen Pose2d y Pose3d, en orden de
+/// dependencia.
+///
+/// Se publican los tipos hoja además de los compuestos porque el descriptor de
+/// `Pose2d` los NOMBRA (`Translation2d translation;Rotation2d rotation`): sin
+/// ellos el consumidor sabe que hay un campo pero no cuánto ocupa.
+pub const SCHEMAS: &[Schema] = &[
+    Schema { name: "Translation2d", descriptor: "double x;double y" },
+    Schema { name: "Rotation2d", descriptor: "double value" },
+    Schema { name: "Pose2d", descriptor: "Translation2d translation;Rotation2d rotation" },
+    Schema { name: "Translation3d", descriptor: "double x;double y;double z" },
+    Schema { name: "Quaternion", descriptor: "double w;double x;double y;double z" },
+    Schema { name: "Rotation3d", descriptor: "Quaternion q" },
+    Schema { name: "Pose3d", descriptor: "Translation3d translation;Rotation3d rotation" },
+];
+
+/// Pose2d: 24 bytes = x, y, theta (rad), little-endian.
+pub fn pose2d(x: f64, y: f64, theta_rad: f64) -> Vec<u8> {
+    let mut out = Vec::with_capacity(24);
+    for v in [x, y, theta_rad] {
+        out.extend_from_slice(&v.to_le_bytes());
+    }
+    out
+}
+
+/// Pose3d: 56 bytes = x, y, z (24 B) + quaternion w, x, y, z (32 B).
+///
+/// Rotation3d serializa como QUATERNION, no como roll/pitch/yaw. Mandar tres
+/// ángulos aquí produce un valor que decodifica sin error y apunta a cualquier
+/// lado.
+pub fn pose3d(x: f64, y: f64, z: f64, qw: f64, qx: f64, qy: f64, qz: f64) -> Vec<u8> {
+    let mut out = Vec::with_capacity(56);
+    for v in [x, y, z, qw, qx, qy, qz] {
+        out.extend_from_slice(&v.to_le_bytes());
+    }
+    out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn los_tamanos_coinciden_con_wpilib() {
+        // Si estos cambian, STRUCT_DEFS de la app y esto dejaron de coincidir.
+        assert_eq!(pose2d(0.0, 0.0, 0.0).len(), 24);
+        assert_eq!(pose3d(0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0).len(), 56);
+    }
+
+    #[test]
+    fn los_campos_caen_en_su_offset() {
+        let b = pose2d(1.5, -2.5, 0.75);
+        assert_eq!(f64::from_le_bytes(b[0..8].try_into().unwrap()), 1.5);
+        assert_eq!(f64::from_le_bytes(b[8..16].try_into().unwrap()), -2.5);
+        assert_eq!(f64::from_le_bytes(b[16..24].try_into().unwrap()), 0.75);
+
+        let p = pose3d(1.0, 2.0, 3.0, 0.5, 0.6, 0.7, 0.8);
+        assert_eq!(f64::from_le_bytes(p[16..24].try_into().unwrap()), 3.0);
+        assert_eq!(f64::from_le_bytes(p[24..32].try_into().unwrap()), 0.5);
+        assert_eq!(f64::from_le_bytes(p[48..56].try_into().unwrap()), 0.8);
+    }
+
+    #[test]
+    fn las_dependencias_van_antes_que_los_compuestos() {
+        // Publicar Pose2d antes que Translation2d deja una ventana en la que la
+        // app tiene el compuesto sin sus hojas.
+        let pos = |n: &str| SCHEMAS.iter().position(|s| s.name == n).unwrap();
+        assert!(pos("Translation2d") < pos("Pose2d"));
+        assert!(pos("Rotation2d") < pos("Pose2d"));
+        assert!(pos("Quaternion") < pos("Rotation3d"));
+        assert!(pos("Rotation3d") < pos("Pose3d"));
+        assert!(pos("Translation3d") < pos("Pose3d"));
+    }
+}

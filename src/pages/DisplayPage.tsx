@@ -2,8 +2,12 @@ import React, { useState, useRef, useCallback, useMemo } from "react"
 import { TopicAnnounce, DashboardWidget, GRID_CELL, MIN_WIDGET_W, MIN_WIDGET_H } from "../store/appStore"
 import { useSelectionStore } from "../store/selectionStore"
 import { useNTSnapshot } from "../utils/nt/useNTSnapshot"
-import TreeDirectory from "../components/dashboard/TreeDirectory"
+import DataDirectoryPanel from "../components/dashboard/DataDirectoryPanel"
+import { FIELD2D_TYPE, isField2dTable } from "../utils/field/field2d"
+import { useTableTypeStore } from "../store/tableTypeStore"
 import DashboardCard from "../components/dashboard/DashboardCard"
+import PanelHeader from "../components/layout/PanelHeader"
+import StatusBadge from "../components/common/StatusBadge"
 
 interface Props {
   topics: Map<string, TopicAnnounce>
@@ -22,6 +26,7 @@ const CANVAS_ROWS = 36
 export default function DisplayPage({ topics, widgets, onAddWidget, onRemoveWidget, onUpdateWidget }: Props) {
   const [activeId, setActiveId] = useState<string | null>(null)
   const [isDragOver, setIsDragOver] = useState(false)
+  const tableTypes = useTableTypeStore(s => s.types)
 
   const isLive = useSelectionStore((s) => s.isLive)
 
@@ -59,6 +64,9 @@ export default function DisplayPage({ topics, widgets, onAddWidget, onRemoveWidg
 
     const topicName = e.dataTransfer.getData("topicName")
     const topicType = e.dataTransfer.getData("topicType")
+    // Se arrastró UN índice de un array, no el array entero.
+    const rawArrayIndex = e.dataTransfer.getData("arrayIndex")
+    const arrayIndex = rawArrayIndex === "" ? undefined : Number(rawArrayIndex)
     if (!topicName || !canvasRef.current) return
 
     const rect = canvasRef.current.getBoundingClientRect()
@@ -72,15 +80,21 @@ export default function DisplayPage({ topics, widgets, onAddWidget, onRemoveWidg
     const cellY = Math.max(0, Math.min(CANVAS_ROWS - MIN_WIDGET_H, Math.floor(offsetY / GRID_CELL)))
 
     const parts = topicName.split("/").filter(Boolean)
-    const defaultLabel = parts.length > 0 ? parts[parts.length - 1] : topicName
+    const baseLabel = parts.length > 0 ? parts[parts.length - 1] : topicName
+    const defaultLabel = arrayIndex === undefined ? baseLabel : `${baseLabel}[${arrayIndex}]`
+
+    // Una cancha en 4x4 celdas es ilegible: arranca con el tamaño que respeta
+    // más o menos la proporción del campo.
+    const isField = topicType === FIELD2D_TYPE
 
     onAddWidget({
       topicName,
       topicType,
       label: defaultLabel,
+      arrayIndex,
       style: "Simple",
-      width: 4,
-      height: 4,
+      width: isField ? 10 : 4,
+      height: isField ? 6 : 4,
       x: cellX,
       y: cellY,
     })
@@ -146,46 +160,22 @@ export default function DisplayPage({ topics, widgets, onAddWidget, onRemoveWidg
     <div style={{ display: "flex", width: "100%", height: "100%", background: "var(--bg-page)", overflow: "hidden", position: "relative" }}>
 
       {/* SIDEBAR: DATA DIRECTORY (arrastrable hacia la cuadrícula) */}
-      <div style={{ width: 300, background: "var(--bg-panel)", borderRight: "1px solid var(--border-main)", display: "flex", flexDirection: "column", flexShrink: 0 }}>
-        <div style={{ padding: "24px 20px", borderBottom: "1px solid var(--border-light)", background: "var(--bg-panel)" }}>
-          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.55)", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 4 }}>
-            NetworkTables 4
-          </div>
-          <div style={{ fontSize: 18, fontWeight: 600, color: "#fff" }}>
-            Data Directory
-          </div>
-        </div>
-        <div style={{ flex: 1, overflowY: "auto", padding: "8px 0" }}>
-          <TreeDirectory topics={topics} />
-        </div>
-      </div>
+      <DataDirectoryPanel
+        topics={topics}
+        hint="Drag a topic, an array index, or a whole Field2d table onto the grid"
+        folderDragType={(fullPath) => (isField2dTable(tableTypes, fullPath) ? FIELD2D_TYPE : null)}
+      />
 
       {/* MAIN GRID: WIDGET DASHBOARD */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
-        {/* CABECERA TOP DEL WORKSPACE */}
-        <div style={{ height: 48, background: "var(--bg-menubar)", borderBottom: "1px solid var(--border-main)", display: "flex", alignItems: "center", padding: "0 24px", flexShrink: 0 }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: "#fff" }}>Dashboard Workspace</span>
-          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", marginLeft: 14 }}>
-            {widgets.length} widget{widgets.length !== 1 ? "s" : ""} · drag a variable from the directory · drag to move · corner to resize
-          </span>
-
-          {/* Refleja el estado del timeline: si está pausado, estos valores
-              son los del instante seleccionado, no "ahora". */}
-          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-            <span
-              style={{
-                width: 6,
-                height: 6,
-                borderRadius: "50%",
-                background: isLive ? "var(--status-sim)" : "var(--mars-red)"
-              }}
-            />
-            <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: 0.5, color: "rgba(255,255,255,0.55)", fontFamily: "monospace" }}>
-              {isLive ? "LIVE" : "VIEWING HISTORY"}
-            </span>
-          </div>
-        </div>
+        {/* CABECERA TOP DEL WORKSPACE. El badge refleja el estado del timeline:
+            si está pausado, los valores son los del instante seleccionado, no "ahora". */}
+        <PanelHeader
+          title="Dashboard Workspace"
+          meta={`${widgets.length} widget${widgets.length !== 1 ? "s" : ""} · drag a variable from the directory · drag to move · corner to resize`}
+          action={<StatusBadge color={isLive ? "var(--status-sim)" : "var(--mars-red)"} label={isLive ? "LIVE" : "VIEWING HISTORY"} />}
+        />
 
         {/* CANVAS CON SCROLL: la cuadrícula es la guía literal de posicionamiento */}
         <div style={{ flex: 1, overflow: "auto", background: "var(--bg-page)" }}>
@@ -210,10 +200,10 @@ export default function DisplayPage({ topics, widgets, onAddWidget, onRemoveWidg
                   backgroundColor: isDragOver ? "var(--bg-input)" : "var(--bg-page)",
                   border: isDragOver ? "1px dashed var(--mars-red)" : "1px solid transparent",
                   backgroundImage:
-                    "linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px)," +
-                    "linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)," +
-                    "linear-gradient(rgba(255,255,255,0.14) 1px, transparent 1px)," +
-                    "linear-gradient(90deg, rgba(255,255,255,0.14) 1px, transparent 1px)",
+                    "linear-gradient(var(--grid-line) 1px, transparent 1px)," +
+                    "linear-gradient(90deg, var(--grid-line) 1px, transparent 1px)," +
+                    "linear-gradient(var(--grid-line-major) 1px, transparent 1px)," +
+                    "linear-gradient(90deg, var(--grid-line-major) 1px, transparent 1px)",
                   backgroundSize:
                     `${GRID_CELL}px ${GRID_CELL}px, ${GRID_CELL}px ${GRID_CELL}px, ` +
                     `${GRID_CELL * 5}px ${GRID_CELL * 5}px, ${GRID_CELL * 5}px ${GRID_CELL * 5}px`,
@@ -243,6 +233,7 @@ export default function DisplayPage({ topics, widgets, onAddWidget, onRemoveWidg
                     <DashboardCard
                       widget={widget}
                       liveValue={liveValues[widget.topicName]}
+                      topics={topics}
                       onRemove={() => onRemoveWidget(widget.id)}
                       onUpdate={(updates) => onUpdateWidget(widget.id, updates)}
                     />

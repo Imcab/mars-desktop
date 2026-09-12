@@ -1,0 +1,51 @@
+# Entorno de compilación y ejecución del motor de simulación.
+#
+# Gazebo NO se clona dentro del repositorio: se declara aquí y conda lo instala
+# como binarios en el prefijo del entorno. Este archivo es a `sim/` lo que
+# `package.json` es al front y `Cargo.toml` a src-tauri.
+#
+#   conda env create -f sim/environment.yml
+#   conda activate mars-sim
+#
+# OJO con los nombres: en Jetty conda-forge dejó de sufijar el número de
+# versión al paquete. Es `gz-sim 10.*`, NO `gz-sim10` (ese esquema murió en
+# Ionic). Buscar con `conda search -c conda-forge gz-sim` y filtrar por
+# versión, porque conda ordena las versiones como texto y "10.5.0" aparece
+# ANTES que "9.5.0" en el listado.
+name: mars-sim
+
+channels:
+  - conda-forge
+
+dependencies:
+  # --- Núcleo de Gazebo Jetty -------------------------------------------
+  # gz-sim arrastra por dependencia a gz-common, gz-math, gz-plugin, gz-utils
+  # y gz-fuel-tools. Se listan aparte solo los que usamos directamente desde
+  # nuestro código, para que una actualización de gz-sim no nos cambie una API
+  # por debajo sin que nos enteremos.
+  - gz-sim 10.*          # ECS + servidor de simulación (Jetty)
+  - gz-transport 15.*    # bus IPC: por aquí habla el bridge
+  - gz-msgs 12.*         # los protobuf que viajan por transport
+  - gz-physics 9.*       # DART / Bullet-Featherstone / TPE
+  - sdformat 16.*        # descripción de mundos y robots
+
+  # NO se instala el metapaquete `gz-jetty`: arrastraría gz-launch y gz-tools,
+  # que no usamos (el supervisor de procesos es Tauri y el CLI `gz` solo sirve
+  # en desarrollo).
+  #
+  # Ojo: gz-gui, gz-rendering y gz-sensors NO se pueden evitar. El paquete
+  # conda de gz-sim los declara como dependencias duras, así que OGRE2 entra
+  # al entorno quiera o no. La distinción es de tiempo de EJECUCIÓN: nuestro
+  # servidor no carga esos plugins, y por eso sigue siendo headless. Si algún
+  # día hace falta recortar el tamaño del entorno distribuible, hay que
+  # compilar gz-sim de fuente con los componentes gui/rendering/sensors
+  # desactivados.
+
+  # --- Cadena de compilación --------------------------------------------
+  # El compilador de C++ no se declara aquí a propósito. En Windows los
+  # paquetes de conda-forge están construidos con MSVC, así que hay que usar
+  # el MSVC del sistema (Visual Studio Build Tools con el workload de C++);
+  # meter `cxx-compiler` pelea con él más de lo que ayuda.
+  - cmake >=3.22
+  - ninja
+  - pkg-config

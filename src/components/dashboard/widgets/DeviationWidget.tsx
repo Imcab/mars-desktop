@@ -1,5 +1,3 @@
-import React from "react"
-
 interface Props { value: number; max: number; suffix: string }
 
 export default function DeviationWidget({ value, max, suffix }: Props) {

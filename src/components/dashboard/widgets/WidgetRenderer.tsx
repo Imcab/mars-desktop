@@ -1,5 +1,6 @@
-import React from "react"
-import { DashboardWidget } from "../../../store/appStore"
+import { DashboardWidget, TopicAnnounce } from "../../../store/appStore"
+import Field2dWidget from "./Field2dWidget"
+import UnsupportedValue from "../../common/UnsupportedValue"
 import { TopicClassification } from "../../../utils/dashboard/topicClassification"
 import BooleanWidget from "./BooleanWidget"
 import RotationWidget from "./RotationWidget"
@@ -7,20 +8,29 @@ import StructWidget from "./StructWidget"
 import StructArrayWidget from "./StructArrayWidget"
 import StructArraySingleWidget from "./StructArraySingleWidget"
 import NumberArrayWidget from "./NumberArrayWidget"
+import ValueListWidget from "./ValueListWidget"
 import NumberWidget from "./NumberWidget"
 
 interface Props {
   widget: DashboardWidget
   rawVal: any
   classification: TopicClassification
+  /** Necesario solo para los widgets que leen una TABLA entera (Field2d). */
+  topics: Map<string, TopicAnnounce>
 }
 
 // Único lugar donde se decide "este tipo de topic -> este componente".
 // Para agregar un tipo nuevo (ej. ChassisSpeeds): 1) STRUCT_DEFS en
 // utils/dashboard/valueDecoding.ts si es un struct, 2) su componente en
 // ./widgets, 3) un case aquí.
-export default function WidgetRenderer({ widget, rawVal, classification }: Props) {
-  const { isBoolean, isRotationSingle, isStructSingle, isStructArray, isNumericArray, isString, structName } = classification
+export default function WidgetRenderer({ widget, rawVal, classification, topics }: Props) {
+  const { isBoolean, isRotationSingle, isStructSingle, isStructArray, isNumericArray, isTextArray, isString, isField2d, structName } = classification
+
+  // Va ANTES del chequeo de rawVal: un Field2d no tiene valor propio, se lo
+  // arma leyendo los topics que cuelgan de su tabla.
+  if (isField2d) {
+    return <Field2dWidget widget={widget} topics={topics} />
+  }
 
   if (rawVal === null) {
     return <span style={{ fontSize: 14, color: "var(--text-muted)", fontFamily: "monospace" }}>--</span>
@@ -47,8 +57,29 @@ export default function WidgetRenderer({ widget, rawVal, classification }: Props
     return <StructArrayWidget rawVal={rawVal} structName={structName!} />
   }
 
+  // Un solo elemento del array (se arrastró su fila de índice en el árbol).
+  if ((isNumericArray || isTextArray) && widget.arrayIndex !== undefined) {
+    const element = Array.isArray(rawVal) ? rawVal[widget.arrayIndex] : undefined
+    if (element === undefined) {
+      return <UnsupportedValue message={`Index ${widget.arrayIndex} out of range`} />
+    }
+    if (typeof element === "number") {
+      return <NumberWidget value={element} style={widget.style} min={widget.min ?? 0} max={widget.max ?? 100} unit={widget.unit} />
+    }
+    return (
+      <span style={{ fontSize: 18, color: "var(--text-primary)", fontWeight: 600, textAlign: "center", wordBreak: "break-all" }}>
+        {typeof element === "boolean" ? (element ? "true" : "false") : String(element)}
+      </span>
+    )
+  }
+
   if (isNumericArray) {
     return <NumberArrayWidget values={Array.isArray(rawVal) ? rawVal : []} />
+  }
+
+  // boolean[] / string[] — sin magnitud que graficar, van como lista de texto.
+  if (isTextArray) {
+    return <ValueListWidget values={Array.isArray(rawVal) ? rawVal : []} />
   }
 
   if (isString) {

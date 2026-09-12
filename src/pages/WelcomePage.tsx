@@ -1,4 +1,6 @@
-import { Page, ConnectionState } from "../store/appStore"
+import { useState } from "react"
+import { Page, ConnectionState, ToolKind } from "../store/appStore"
+import { MARS_ENABLED, PROJECT_ITEMS, MODULE_ITEMS, CONFIG_ITEMS } from "@mars"
 
 interface Props {
   navigate: (page: Page) => void
@@ -7,108 +9,212 @@ interface Props {
   onConnectSim: () => void
   onConnectReal: () => void
   onDisconnect: () => void
+  onCreateTab: (kind: ToolKind) => void
   projectName: string | null
 }
 
-export default function WelcomePage({ navigate, onOpenProject, projectName }: Props) {
-
+// Pantalla de arranque estilo suite de escritorio de los 2000: una banda
+// oscura arriba con el logo y tres paneles biselados con listas densas. Nada
+// de tarjetas grandes ni hero a pantalla completa — esto es el índice de una
+// herramienta, no la landing de un producto.
+export default function WelcomePage({ navigate, onOpenProject, onCreateTab, projectName }: Props) {
   return (
-    <div style={{ flex: 1, display: "flex", justifyContent: "center", background: "var(--bg-page)", overflowY: "auto" }}>
-      <div style={{ width: "100%", maxWidth: 820, padding: "48px 24px 60px" }}>
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "var(--bg-app)", overflow: "hidden" }}>
 
-        {/* HERO: LOGO PREDOMINANTE */}
-        <div style={{ textAlign: "center", marginBottom: 36 }}>
-          <img src="/marsblacklogo.png" alt="MARS Logo" style={{ height: 190, objectFit: "contain" }} />
-          <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 0 }}>
-            Modular Architecture for Robot Systems
-          </div>
-          <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 6 }}>
-            {projectName ? (
-              <span style={{ color: "var(--mars-accent, var(--mars-red))", fontWeight: 600 }}>PROJECT: {projectName.toUpperCase()}</span>
-            ) : "no project loaded"}
-          </div>
+      <Banner projectName={projectName} />
+
+      <div style={{ flex: 1, display: "flex", justifyContent: "center", overflowY: "auto" }}>
+        <div style={{ width: "100%", maxWidth: 680, padding: "18px 24px 40px", display: "flex", flexDirection: "column", gap: 14 }}>
+
+          {/* Un proyecto es un proyecto de MARS. En la edicion Tools el panel
+              entero no aparece y Settings se va al panel de herramientas. */}
+          {MARS_ENABLED && (
+            <BevelPanel title="Project" icon="open-folder.svg">
+              <LaunchList
+                items={[
+                  ...PROJECT_ITEMS.flatMap(i => [
+                    { svg: i.svg, title: i.label, desc: i.desc, page: i.page },
+                    // "Open project" es una accion, no una pagina: va detras de
+                    // "New project", como en el sidebar.
+                    ...(i.page === "creator"
+                      ? [{ svg: "open-folder.svg", title: "Open project", desc: "Load from disk", action: onOpenProject }]
+                      : []),
+                  ]),
+                  { svg: "settings.svg", title: "Settings", desc: "Workspace paths and defaults", page: "settings" as Page },
+                ]}
+                navigate={navigate}
+              />
+            </BevelPanel>
+          )}
+
+          <BevelPanel title="Live Data" icon="connect.svg">
+            <LaunchList
+              items={[
+                { svg: "visualizer2d.svg", title: "2D Visualizer", desc: "Robot poses on the field", tabKind: "visualizer" },
+                { svg: "field3d.svg", title: "Field 3D", desc: "The season field in 3D, with your robot and its components", tabKind: "field3d" },
+                { svg: "swerve.svg", title: "Swerve", desc: "Module states and chassis speeds", tabKind: "swerve" },
+                { svg: "swerve3d.svg", title: "Swerve 3D", desc: "Your robot model driven by the module states", tabKind: "swerve3d" },
+                { svg: "mechanism.svg", title: "Mechanism", desc: "Mechanism2d roots and ligaments", tabKind: "mechanism" },
+                { svg: "mechanism3d.svg", title: "Mechanism 3D", desc: "Articulated STL/GLB parts driven by your topics", tabKind: "mechanism3d" },
+                { svg: "nt-session.svg", title: "NT Session", desc: "Publish your own values and copy them as Java", tabKind: "ntsession" },
+                { svg: "telemetry.svg", title: "Telemetry", desc: "Live variable inspector", tabKind: "telemetry" },
+                { svg: "display.svg", title: "Display", desc: "Custom live dashboard", tabKind: "display" },
+                { svg: "function.svg", title: "Function plot", desc: "Plot numeric topics over time", tabKind: "functions" },
+                { svg: "equation.svg", title: "Equations", desc: "Live math over your variables", tabKind: "equations" },
+              ]}
+              navigate={navigate}
+              onCreateTab={onCreateTab}
+            />
+          </BevelPanel>
+
+          <BevelPanel title="Tools" icon="packages.svg">
+            <LaunchList
+              items={[
+                ...MODULE_ITEMS.map(i => ({ svg: i.svg, title: i.label, desc: i.desc, page: i.page })),
+                ...CONFIG_ITEMS.map(i => ({ svg: i.svg, title: i.label, desc: i.desc, page: i.page })),
+                { svg: "loop-timing.svg", title: "Loop timing", desc: "Jitter and period analysis", page: "jitter" as Page },
+                { svg: "network.svg", title: "Network bandwidth", desc: "Which topics eat the 4 Mbps budget", page: "bandwidth" as Page },
+                { svg: "sysid.svg", title: "System identification", desc: "Fit kS/kV/kA from recorded runs", page: "sysid" as Page },
+                { svg: "console.svg", title: "Command console", desc: "Write values back to the robot", page: "console" as Page },
+                { svg: "phone.svg", title: "Phone telemetry", desc: "Cast dashboard to mobile", page: "phone" as Page },
+                ...(MARS_ENABLED ? [] : [
+                  { svg: "settings.svg", title: "Settings", desc: "Team number, NetworkTables target", page: "settings" as Page },
+                ]),
+              ]}
+              navigate={navigate}
+            />
+          </BevelPanel>
+
         </div>
-
-        {/* SECCIONES DE ACCESOS RÁPIDOS */}
-        <LaunchSection
-          title="PROJECT"
-          items={[
-            { icon: "ti-plus", title: "New project", desc: "Start a MARS robot project from scratch", page: "creator" as Page },
-            { icon: "ti-folder-open", title: "Open project", desc: "Load an existing project from disk", action: onOpenProject },
-            { icon: "ti-file-plus", title: "Project wizard", desc: "Guided setup for a new robot codebase", page: "wizard" as Page },
-            { icon: "ti-settings", title: "Settings", desc: "Configure workspace paths and defaults", page: "settings" as Page },
-          ]}
-          navigate={navigate}
-        />
-
-        <LaunchSection
-          title="LIVE DATA"
-          items={[
-            { icon: "ti-vector", title: "2D Visualizer", desc: "Visualize robot mechanisms via NT4", page: "visualizer" as Page },
-            { icon: "ti-chart-line", title: "Telemetry", desc: "Live variable inspector for all NT4 topics", page: "telemetry" as Page },
-            { icon: "ti-layout-dashboard", title: "Display", desc: "Build a custom live dashboard", page: "display" as Page },
-            { icon: "ti-wave-sine", title: "Function plot", desc: "Plot and transform numeric topics over time", page: "functions" as Page },
-          ]}
-          navigate={navigate}
-        />
-
-        <LaunchSection
-          title="TOOLS"
-          items={[
-            { icon: "ti-package", title: "Package manager", desc: "Browse and install MARS modules", page: "packages" as Page },
-            { icon: "ti-variable", title: "Variables table", desc: "Units and raw types registered by the project", page: "variables" as Page },
-            { icon: "ti-blocks", title: "Manifest table", desc: "Hardware modules detected in Manifest.java", page: "manifest" as Page },
-            { icon: "ti-device-mobile", title: "Phone telemetry", desc: "Cast the dashboard to a mobile device", page: "phone" as Page },
-          ]}
-          navigate={navigate}
-        />
-
       </div>
     </div>
   )
 }
 
+// Banda oscura con el logo, del mismo gris que la barra de menú: las dos
+// juntas forman el "techo" de la ventana.
+function Banner({ projectName }: { projectName: string | null }) {
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 14,
+      padding: "14px 24px", flexShrink: 0,
+      background: "linear-gradient(180deg, #3c3d44 0%, #2b2c31 100%)",
+      borderBottom: "1px solid #14151a",
+      boxShadow: "inset 0 1px 0 #55565e",
+    }}>
+      <img src="/marslogo.png" alt="MARS" style={{ height: 30, objectFit: "contain" }} draggable={false} />
+
+      <div style={{ width: 1, height: 26, background: "#55565e" }} />
+
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 11.5, color: "var(--text-menubar)", letterSpacing: 0.4 }}>
+          Modular Architecture for Robot Systems
+        </div>
+        <div style={{ fontSize: 10, marginTop: 2, fontFamily: "ui-monospace, monospace" }}>
+          {projectName ? (
+            <span style={{ color: "#f0a860" }}>PROJECT: {projectName.toUpperCase()}</span>
+          ) : (
+            <span style={{ color: "var(--text-menubar-dim)" }}>NO PROJECT LOADED</span>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Panel con relieve: barra de título en degradé y borde biselado, como un
+// QGroupBox de Qt clásico.
+function BevelPanel({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) {
+  return (
+    <div style={{
+      background: "var(--bg-page)",
+      borderTop: "1px solid var(--bevel-light)",
+      borderLeft: "1px solid var(--bevel-light)",
+      borderRight: "1px solid var(--bevel-dark)",
+      borderBottom: "1px solid var(--bevel-dark)",
+      boxShadow: "1px 1px 0 var(--shadow-soft)",
+    }}>
+      <div style={{
+        display: "flex", alignItems: "center", gap: 6,
+        height: 24, padding: "0 8px",
+        background: "linear-gradient(180deg, #e6e6ea 0%, #d4d4da 100%)",
+        borderBottom: "1px solid var(--bevel-dark)",
+        userSelect: "none",
+      }}>
+        <img src={`/icons/${icon}`} alt="" aria-hidden width={14} height={14} draggable={false} style={{ display: "block" }} />
+        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-primary)", letterSpacing: 0.2 }}>{title}</span>
+      </div>
+      {children}
+    </div>
+  )
+}
+
 interface LaunchItem {
-  icon: string
+  svg: string
   title: string
   desc: string
   page?: Page
+  tabKind?: ToolKind
   action?: () => void
 }
 
-function LaunchSection({ title, items, navigate }: { title: string, items: LaunchItem[], navigate: (page: Page) => void }) {
+function LaunchList({ items, navigate, onCreateTab }: {
+  items: LaunchItem[]
+  navigate: (page: Page) => void
+  onCreateTab?: (kind: ToolKind) => void
+}) {
   return (
-    <div style={{ marginBottom: 28 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", letterSpacing: 1 }}>{title}</span>
-        <div style={{ flex: 1, height: 1, background: "var(--border-light)" }} />
-      </div>
+    <div>
+      {items.map((item, i) => (
+        <LaunchRow
+          key={item.title}
+          item={item}
+          navigate={navigate}
+          onCreateTab={onCreateTab}
+          // Cebrado: en listas densas de filas parejas es lo que hace que el
+          // ojo siga la línea hasta la descripción de la derecha.
+          striped={i % 2 === 1}
+        />
+      ))}
+    </div>
+  )
+}
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        {items.map(card => {
-          const isClickable = card.page !== undefined || card.action !== undefined
+function LaunchRow({ item, navigate, onCreateTab, striped }: {
+  item: LaunchItem
+  navigate: (page: Page) => void
+  onCreateTab?: (kind: ToolKind) => void
+  striped: boolean
+}) {
+  const [hovered, setHovered] = useState(false)
 
-          return (
-            <div
-              key={card.title}
-              onClick={() => card.action ? card.action() : card.page && navigate(card.page)}
-              style={{
-                display: "flex", alignItems: "flex-start", gap: 12,
-                background: "var(--bg-panel)", border: "1px solid var(--border-main)", color: "var(--text-primary)",
-                borderRadius: 3, padding: "14px 16px", cursor: isClickable ? "pointer" : "default"
-              }}
-              onMouseEnter={e => isClickable && ((e.currentTarget as HTMLDivElement).style.background = "var(--bg-input)")}
-              onMouseLeave={e => ((e.currentTarget as HTMLDivElement).style.background = "var(--bg-panel)")}
-            >
-              <i className={`ti ${card.icon}`} style={{ fontSize: 20, color: "var(--mars-red, var(--mars-red))", flexShrink: 0, marginTop: 2 }} aria-hidden />
-              <div style={{ overflow: "hidden" }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)", marginBottom: 2 }}>{card.title}</div>
-                <div style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.4 }}>{card.desc}</div>
-              </div>
-            </div>
-          )
-        })}
-      </div>
+  return (
+    <div
+      onClick={() => {
+        if (item.action) return item.action()
+        if (item.tabKind) return onCreateTab?.(item.tabKind)
+        if (item.page) return navigate(item.page)
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display: "flex", alignItems: "center", gap: 8,
+        padding: "0 9px", height: 24,
+        background: hovered ? "var(--tree-selection-bg)" : striped ? "var(--bg-panel)" : "transparent",
+        color: hovered ? "var(--tree-selection-fg)" : "var(--text-primary)",
+        cursor: "pointer", userSelect: "none",
+      }}
+    >
+      <img src={`/icons/${item.svg}`} alt="" aria-hidden width={15} height={15} draggable={false} style={{ display: "block", flexShrink: 0 }} />
+      <span style={{ fontSize: 11.5, flexShrink: 0 }}>{item.title}</span>
+      <span style={{
+        fontSize: 10, marginLeft: "auto", textAlign: "right",
+        color: hovered ? "var(--tree-selection-fg)" : "var(--text-muted)",
+        opacity: hovered ? 0.85 : 1,
+        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+      }}>
+        {item.desc}
+      </span>
     </div>
   )
 }

@@ -1,0 +1,338 @@
+<?xml version="1.0" ?>
+<!--
+  Swerve de cuatro modulos sobre Kraken X60.
+
+  GENERADO por sim/worlds/gen_swerve.py. Para cambiar el robot se toca el
+  script y se vuelve a correr, no este archivo.
+
+  Cada modulo son DOS joints: uno de direccion sobre Z (el cuerpo del
+  modulo gira entero) y uno de traccion sobre el eje de la rueda. El link
+  de la rueda cuelga del de direccion y no del chasis, porque girar la
+  direccion tiene que arrastrar la rueda con ella.
+
+  Las direcciones NO tienen tope ni resorte: con par cero quedan libres y
+  las fuerzas laterales las mueven, igual que un modulo real sin
+  corriente. El codigo del robot tiene que cerrar el lazo de posicion.
+  sim/bridge/fake-robot.py lo hace con un P para poder probarlo.
+
+  Sin muros de perimetro: un <plane> de colision es infinito y el <size>
+  solo dibuja, asi que el robot puede salirse del campo conduciendo.
+-->
+<sdf version="1.11">
+  <world name="mars">
+
+    <physics name="250hz" type="ignored">
+      <max_step_size>0.004</max_step_size>
+      <real_time_factor>0</real_time_factor>
+    </physics>
+
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+
+    <gravity>0 0 -9.8</gravity>
+
+    <light type="directional" name="sun">
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><plane><normal>0 0 1</normal></plane></geometry>
+          <surface><friction><ode><mu>0.9</mu><mu2>0.9</mu2></ode></friction></surface>
+        </collision>
+      </link>
+    </model>
+
+    <model name="frc_field">
+      <static>true</static>
+      <pose>0 0 0 1.570796 0 0</pose>
+      <link name="link">
+        <visual name="visual">
+          <cast_shadows>false</cast_shadows>
+          <geometry><mesh><uri>fields/2026-rebuilt/model.glb</uri></mesh></geometry>
+        </visual>
+      </link>
+    </model>
+
+    <model name="robot">
+      <pose>0 0 0 0 0 0</pose>
+
+      <link name="chassis">
+        <pose>0 0 0.2 0 0 0</pose>
+        <inertial>
+          <mass>45.0</mass>
+          <inertia><ixx>2.0284</ixx><iyy>2.0284</iyy><izz>3.8880</izz>
+            <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia>
+        </inertial>
+        <collision name="collision"><geometry><box><size>0.72 0.72 0.15</size></box></geometry></collision>
+        <visual name="visual">
+          <geometry><box><size>0.72 0.72 0.15</size></box></geometry>
+          <material>
+            <ambient>0.35 0.15 0.06 1</ambient>
+            <diffuse>0.91 0.39 0.16 1</diffuse>
+            <specular>0.3 0.3 0.3 1</specular>
+          </material>
+        </visual>
+      </link>
+
+      <!-- modulo fl -->
+      <link name="fl_steer">
+        <pose>0.2757 0.2757 0.12 0 0 0</pose>
+        <inertial>
+          <mass>1.2</mass>
+          <inertia><ixx>0.015346</ixx><iyy>0.015346</iyy><izz>0.030091</izz>
+            <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia>
+        </inertial>
+        <visual name="visual">
+          <geometry><cylinder><radius>0.05</radius><length>0.12</length></cylinder></geometry>
+          <material><ambient>0.25 0.26 0.3 1</ambient><diffuse>0.62 0.65 0.72 1</diffuse></material>
+        </visual>
+      </link>
+
+      <link name="fl_wheel">
+        <pose>0.2757 0.2757 0.0508 -1.5707963 0 0</pose>
+        <inertial>
+          <mass>0.8</mass>
+          <inertia><ixx>0.001122</ixx><iyy>0.001122</iyy><izz>0.002200</izz>
+            <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia>
+        </inertial>
+        <collision name="collision">
+          <geometry><cylinder><radius>0.0508</radius><length>0.045</length></cylinder></geometry>
+          <surface><friction><ode><mu>1.1</mu><mu2>1.1</mu2></ode></friction></surface>
+        </collision>
+        <visual name="visual">
+          <geometry><cylinder><radius>0.0508</radius><length>0.045</length></cylinder></geometry>
+          <material><ambient>0.05 0.05 0.06 1</ambient><diffuse>0.13 0.13 0.15 1</diffuse></material>
+        </visual>
+      </link>
+
+      <joint name="fl_steer_joint" type="revolute">
+        <parent>chassis</parent><child>fl_steer</child>
+        <axis><xyz>0 0 1</xyz>
+          <dynamics><damping>1.5</damping></dynamics>
+          <limit><lower>-1e16</lower><upper>1e16</upper></limit></axis>
+      </joint>
+      <joint name="fl_drive_joint" type="revolute">
+        <parent>fl_steer</parent><child>fl_wheel</child>
+        <axis><xyz>0 0 1</xyz>
+          <dynamics><damping>0.02</damping></dynamics>
+          <limit><lower>-1e16</lower><upper>1e16</upper></limit></axis>
+      </joint>
+
+      <!-- modulo fr -->
+      <link name="fr_steer">
+        <pose>0.2757 -0.2757 0.12 0 0 0</pose>
+        <inertial>
+          <mass>1.2</mass>
+          <inertia><ixx>0.015346</ixx><iyy>0.015346</iyy><izz>0.030091</izz>
+            <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia>
+        </inertial>
+        <visual name="visual">
+          <geometry><cylinder><radius>0.05</radius><length>0.12</length></cylinder></geometry>
+          <material><ambient>0.25 0.26 0.3 1</ambient><diffuse>0.62 0.65 0.72 1</diffuse></material>
+        </visual>
+      </link>
+
+      <link name="fr_wheel">
+        <pose>0.2757 -0.2757 0.0508 -1.5707963 0 0</pose>
+        <inertial>
+          <mass>0.8</mass>
+          <inertia><ixx>0.001122</ixx><iyy>0.001122</iyy><izz>0.002200</izz>
+            <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia>
+        </inertial>
+        <collision name="collision">
+          <geometry><cylinder><radius>0.0508</radius><length>0.045</length></cylinder></geometry>
+          <surface><friction><ode><mu>1.1</mu><mu2>1.1</mu2></ode></friction></surface>
+        </collision>
+        <visual name="visual">
+          <geometry><cylinder><radius>0.0508</radius><length>0.045</length></cylinder></geometry>
+          <material><ambient>0.05 0.05 0.06 1</ambient><diffuse>0.13 0.13 0.15 1</diffuse></material>
+        </visual>
+      </link>
+
+      <joint name="fr_steer_joint" type="revolute">
+        <parent>chassis</parent><child>fr_steer</child>
+        <axis><xyz>0 0 1</xyz>
+          <dynamics><damping>1.5</damping></dynamics>
+          <limit><lower>-1e16</lower><upper>1e16</upper></limit></axis>
+      </joint>
+      <joint name="fr_drive_joint" type="revolute">
+        <parent>fr_steer</parent><child>fr_wheel</child>
+        <axis><xyz>0 0 1</xyz>
+          <dynamics><damping>0.02</damping></dynamics>
+          <limit><lower>-1e16</lower><upper>1e16</upper></limit></axis>
+      </joint>
+
+      <!-- modulo bl -->
+      <link name="bl_steer">
+        <pose>-0.2757 0.2757 0.12 0 0 0</pose>
+        <inertial>
+          <mass>1.2</mass>
+          <inertia><ixx>0.015346</ixx><iyy>0.015346</iyy><izz>0.030091</izz>
+            <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia>
+        </inertial>
+        <visual name="visual">
+          <geometry><cylinder><radius>0.05</radius><length>0.12</length></cylinder></geometry>
+          <material><ambient>0.25 0.26 0.3 1</ambient><diffuse>0.62 0.65 0.72 1</diffuse></material>
+        </visual>
+      </link>
+
+      <link name="bl_wheel">
+        <pose>-0.2757 0.2757 0.0508 -1.5707963 0 0</pose>
+        <inertial>
+          <mass>0.8</mass>
+          <inertia><ixx>0.001122</ixx><iyy>0.001122</iyy><izz>0.002200</izz>
+            <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia>
+        </inertial>
+        <collision name="collision">
+          <geometry><cylinder><radius>0.0508</radius><length>0.045</length></cylinder></geometry>
+          <surface><friction><ode><mu>1.1</mu><mu2>1.1</mu2></ode></friction></surface>
+        </collision>
+        <visual name="visual">
+          <geometry><cylinder><radius>0.0508</radius><length>0.045</length></cylinder></geometry>
+          <material><ambient>0.05 0.05 0.06 1</ambient><diffuse>0.13 0.13 0.15 1</diffuse></material>
+        </visual>
+      </link>
+
+      <joint name="bl_steer_joint" type="revolute">
+        <parent>chassis</parent><child>bl_steer</child>
+        <axis><xyz>0 0 1</xyz>
+          <dynamics><damping>1.5</damping></dynamics>
+          <limit><lower>-1e16</lower><upper>1e16</upper></limit></axis>
+      </joint>
+      <joint name="bl_drive_joint" type="revolute">
+        <parent>bl_steer</parent><child>bl_wheel</child>
+        <axis><xyz>0 0 1</xyz>
+          <dynamics><damping>0.02</damping></dynamics>
+          <limit><lower>-1e16</lower><upper>1e16</upper></limit></axis>
+      </joint>
+
+      <!-- modulo br -->
+      <link name="br_steer">
+        <pose>-0.2757 -0.2757 0.12 0 0 0</pose>
+        <inertial>
+          <mass>1.2</mass>
+          <inertia><ixx>0.015346</ixx><iyy>0.015346</iyy><izz>0.030091</izz>
+            <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia>
+        </inertial>
+        <visual name="visual">
+          <geometry><cylinder><radius>0.05</radius><length>0.12</length></cylinder></geometry>
+          <material><ambient>0.25 0.26 0.3 1</ambient><diffuse>0.62 0.65 0.72 1</diffuse></material>
+        </visual>
+      </link>
+
+      <link name="br_wheel">
+        <pose>-0.2757 -0.2757 0.0508 -1.5707963 0 0</pose>
+        <inertial>
+          <mass>0.8</mass>
+          <inertia><ixx>0.001122</ixx><iyy>0.001122</iyy><izz>0.002200</izz>
+            <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia>
+        </inertial>
+        <collision name="collision">
+          <geometry><cylinder><radius>0.0508</radius><length>0.045</length></cylinder></geometry>
+          <surface><friction><ode><mu>1.1</mu><mu2>1.1</mu2></ode></friction></surface>
+        </collision>
+        <visual name="visual">
+          <geometry><cylinder><radius>0.0508</radius><length>0.045</length></cylinder></geometry>
+          <material><ambient>0.05 0.05 0.06 1</ambient><diffuse>0.13 0.13 0.15 1</diffuse></material>
+        </visual>
+      </link>
+
+      <joint name="br_steer_joint" type="revolute">
+        <parent>chassis</parent><child>br_steer</child>
+        <axis><xyz>0 0 1</xyz>
+          <dynamics><damping>1.5</damping></dynamics>
+          <limit><lower>-1e16</lower><upper>1e16</upper></limit></axis>
+      </joint>
+      <joint name="br_drive_joint" type="revolute">
+        <parent>br_steer</parent><child>br_wheel</child>
+        <axis><xyz>0 0 1</xyz>
+          <dynamics><damping>0.02</damping></dynamics>
+          <limit><lower>-1e16</lower><upper>1e16</upper></limit></axis>
+      </joint>
+
+      <!-- El ORDEN es el contrato: define el indice dentro de
+           gz.msgs.Actuators.normalized. El robot-map lista los suyos en
+           el mismo orden y check.py lo verifica.
+
+           Reducciones reales del robot: 5.2734375 de traccion,
+           26.091 de direccion. Salen de TunerConstants.java. -->
+      <plugin filename="MarsLink" name="mars::MarsLink">
+        <actuator joint="fl_drive_joint" motor="kraken_x60" gearRatio="5.2734375"/>
+        <actuator joint="fl_steer_joint" motor="kraken_x60" gearRatio="26.09090909090909" control="position" kp="0.08" kd="0.012"/>
+        <actuator joint="fr_drive_joint" motor="kraken_x60" gearRatio="5.2734375"/>
+        <actuator joint="fr_steer_joint" motor="kraken_x60" gearRatio="26.09090909090909" control="position" kp="0.08" kd="0.012"/>
+        <actuator joint="bl_drive_joint" motor="kraken_x60" gearRatio="5.2734375"/>
+        <actuator joint="bl_steer_joint" motor="kraken_x60" gearRatio="26.09090909090909" control="position" kp="0.08" kd="0.012"/>
+        <actuator joint="br_drive_joint" motor="kraken_x60" gearRatio="5.2734375"/>
+        <actuator joint="br_steer_joint" motor="kraken_x60" gearRatio="26.09090909090909" control="position" kp="0.08" kd="0.012"/>
+      </plugin>
+    </model>
+
+    <include><uri>model://fuel</uri><name>fuel_0</name><pose>-2.519 -0.819 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_1</name><pose>-2.357 -0.819 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_2</name><pose>-2.195 -0.819 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_3</name><pose>-2.033 -0.819 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_4</name><pose>-1.871 -0.819 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_5</name><pose>-1.709 -0.819 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_6</name><pose>-1.547 -0.819 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_7</name><pose>-1.385 -0.819 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_8</name><pose>-1.223 -0.819 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_9</name><pose>-1.061 -0.819 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_10</name><pose>-0.899 -0.819 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_11</name><pose>-0.737 -0.819 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_12</name><pose>-0.575 -0.819 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_13</name><pose>-0.413 -0.819 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_14</name><pose>-0.251 -0.819 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_15</name><pose>-0.089 -0.819 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_16</name><pose>0.073 -0.819 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_17</name><pose>0.235 -0.819 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_18</name><pose>0.397 -0.819 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_19</name><pose>0.559 -0.819 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_20</name><pose>0.721 -0.819 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_21</name><pose>0.883 -0.819 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_22</name><pose>1.045 -0.819 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_23</name><pose>1.207 -0.819 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_24</name><pose>1.369 -0.819 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_25</name><pose>1.531 -0.819 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_26</name><pose>1.693 -0.819 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_27</name><pose>1.855 -0.819 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_28</name><pose>2.017 -0.819 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_29</name><pose>2.179 -0.819 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_30</name><pose>2.341 -0.819 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_31</name><pose>2.503 -0.819 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_32</name><pose>-2.519 -0.657 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_33</name><pose>-2.357 -0.657 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_34</name><pose>-2.195 -0.657 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_35</name><pose>-2.033 -0.657 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_36</name><pose>-1.871 -0.657 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_37</name><pose>-1.709 -0.657 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_38</name><pose>-1.547 -0.657 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_39</name><pose>-1.385 -0.657 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_40</name><pose>-1.223 -0.657 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_41</name><pose>-1.061 -0.657 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_42</name><pose>-0.899 -0.657 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_43</name><pose>-0.737 -0.657 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_44</name><pose>-0.575 -0.657 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_45</name><pose>-0.413 -0.657 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_46</name><pose>-0.251 -0.657 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_47</name><pose>-0.089 -0.657 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_48</name><pose>0.073 -0.657 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_49</name><pose>0.235 -0.657 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_50</name><pose>0.397 -0.657 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_51</name><pose>0.559 -0.657 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_52</name><pose>0.721 -0.657 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_53</name><pose>0.883 -0.657 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_54</name><pose>1.045 -0.657 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_55</name><pose>1.207 -0.657 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_56</name><pose>1.369 -0.657 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_57</name><pose>1.531 -0.657 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_58</name><pose>1.693 -0.657 0.075 0 0 0</pose></include>
+    <include><uri>model://fuel</uri><name>fuel_59</name><pose>1.855 -0.657 0.075 0 0 0</pose></include>
+  </world>
+</sdf>

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 20010904//EN" "http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" width="150px" height="100px" zoomAndPan="disable" viewBox="0 0 150 100">
+	<defs>
+		<linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+			<stop offset="20%" style="stop-color:Red;stop-opacity:1"/>
+			<stop offset="40%" style="stop-color:Orange;stop-opacity:1"/>
+			<stop offset="60%" style="stop-color:Orange;stop-opacity:1"/>
+			<stop offset="80%" style="stop-color:Yellow;stop-opacity:1"/>
+		</linearGradient>
+		<linearGradient id="trans" x1="0%" y1="0%" x2="100%" y2="100%">
+			<stop offset="0%" style="stop-opacity:0"/>
+			<stop offset="100%" style="stop-opacity:0"/>
+		</linearGradient>
+	</defs>
+	<rect x="0" y="0" width="150" height="100" fill="LightGrey" stroke-width="0"/>
+	<polygon points="150,0 145,5 5,95 0,100 150,100" fill="DarkGrey" stroke-width="0"/>
+	<rect x="3" y="3" width="144" height="94" fill="url(#grad)" stroke-width="0"/>
+	<circle cx="75" cy="50" r="40" stroke="Black" stroke-width="7" fill="White"/>
+	<path d="M50 19
+		C50 19 75 49 50 81"
+		stroke="Black" stroke-width="7" fill="White"/>
+	<path d="M50 19
+		C50 19 18 49 50 81"
+		stroke="Black" stroke-width="7" fill="White"/>
+	<path d="M100 19
+		C100 19 75 49 100 81"
+		stroke="Black" stroke-width="7" fill="White"/>
+	<path d="M100 19
+		C100 19 132 49 100 81"
+		stroke="Black" stroke-width="7" fill="White"/>
+	<circle cx="75" cy="50" r="40" stroke="Black" stroke-width="7" fill="url(#trans)"/>
+</svg>

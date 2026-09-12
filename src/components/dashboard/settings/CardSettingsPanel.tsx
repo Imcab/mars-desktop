@@ -1,5 +1,7 @@
-import React, { useState } from "react"
-import { DashboardWidget } from "../../../store/appStore"
+import { useState } from "react"
+import { DashboardWidget, FieldOrientation } from "../../../store/appStore"
+import Field2dFields from "./Field2dFields"
+import { CoordinateSystem, FIELDS, SCHEMATIC_FIELD_KEY, getField } from "../../../utils/field/fieldImages"
 import { TopicClassification } from "../../../utils/dashboard/topicClassification"
 import SizeFields from "./SizeFields"
 import StyleSelect from "./StyleSelect"
@@ -22,7 +24,7 @@ interface Props {
 // Dueño de todo el estado de edición (borradores locales que solo se
 // aplican al widget real cuando el usuario pulsa "Apply Changes").
 export default function CardSettingsPanel({ widget, classification, onSave }: Props) {
-  const { isBoolean, isNumber, isRotationSingle, hasStyleOptions } = classification
+  const { isBoolean, isNumber, isRotationSingle, isField2d, hasStyleOptions } = classification
 
   const [editStyle, setEditStyle] = useState(widget.style)
   const [editMin, setEditMin] = useState(widget.min ?? 0)
@@ -59,6 +61,21 @@ export default function CardSettingsPanel({ widget, classification, onSave }: Pr
   const [editGaugeShowPointer, setEditGaugeShowPointer] = useState(widget.gaugeShowPointer ?? true)
   const [editGaugeShowTicks, setEditGaugeShowTicks] = useState(widget.gaugeShowTicks ?? true)
 
+  // --- Field2d ---
+  const defaultFieldKey = FIELDS[0]?.key ?? SCHEMATIC_FIELD_KEY
+  const [editFieldKey, setEditFieldKey] = useState(widget.fieldKey ?? defaultFieldKey)
+  const [editFieldCoords, setEditFieldCoords] = useState<CoordinateSystem>(
+    (widget.fieldCoordinateSystem as CoordinateSystem | undefined) ??
+      getField(widget.fieldKey ?? defaultFieldKey)?.coordinateSystem ??
+      "wall_blue",
+  )
+  const [editFieldOrientation, setEditFieldOrientation] = useState<FieldOrientation>(widget.fieldOrientation ?? 0)
+  const [editFieldRobotSize, setEditFieldRobotSize] = useState(widget.fieldRobotSize ?? 0.85)
+  const [editFieldRobotWidth, setEditFieldRobotWidth] = useState(widget.fieldRobotWidth ?? widget.fieldRobotSize ?? 0.85)
+  const [editFieldShowGrid, setEditFieldShowGrid] = useState(widget.fieldShowGrid ?? false)
+  const [editFieldAllianceFlip, setEditFieldAllianceFlip] = useState(widget.fieldAllianceFlip ?? false)
+  const [editFieldTrailSeconds, setEditFieldTrailSeconds] = useState(widget.fieldTrailSeconds ?? 0)
+
   // --- Voltage View ---
   const [editVoltageMin, setEditVoltageMin] = useState(widget.voltageMin ?? 4)
   const [editVoltageMax, setEditVoltageMax] = useState(widget.voltageMax ?? 13)
@@ -78,6 +95,10 @@ export default function CardSettingsPanel({ widget, classification, onSave }: Pr
       gaugeShowPointer: editGaugeShowPointer, gaugeShowTicks: editGaugeShowTicks,
       voltageMin: editVoltageMin, voltageMax: editVoltageMax, voltageDivisions: editVoltageDivisions,
       voltageInverted: editVoltageInverted, voltageOrientation: editVoltageOrientation,
+      fieldKey: editFieldKey, fieldCoordinateSystem: editFieldCoords,
+      fieldOrientation: editFieldOrientation, fieldRobotSize: editFieldRobotSize,
+      fieldRobotWidth: editFieldRobotWidth, fieldShowGrid: editFieldShowGrid,
+      fieldAllianceFlip: editFieldAllianceFlip, fieldTrailSeconds: editFieldTrailSeconds,
     })
   }
 
@@ -85,6 +106,33 @@ export default function CardSettingsPanel({ widget, classification, onSave }: Pr
     <div style={{ flex: 1, padding: 12, background: "var(--bg-panel)", overflowY: "auto", display: "flex", flexDirection: "column", gap: 8 }} onMouseDown={e => e.stopPropagation()}>
 
       <SizeFields width={editWidth} height={editHeight} onChangeWidth={setEditWidth} onChangeHeight={setEditHeight} />
+
+      {isField2d && (
+        <Field2dFields
+          fieldKey={editFieldKey}
+          coordinateSystem={editFieldCoords}
+          orientation={editFieldOrientation}
+          robotSize={editFieldRobotSize}
+          robotWidth={editFieldRobotWidth}
+          showGrid={editFieldShowGrid}
+          allianceFlip={editFieldAllianceFlip}
+          trailSeconds={editFieldTrailSeconds}
+          onChangeFieldKey={(key) => {
+            setEditFieldKey(key)
+            // Al cambiar de cancha se adopta el sistema que declara su JSON:
+            // arrastrar el override de la cancha anterior sería peor default.
+            const next = getField(key)?.coordinateSystem
+            if (next) setEditFieldCoords(next)
+          }}
+          onChangeCoordinateSystem={setEditFieldCoords}
+          onChangeOrientation={setEditFieldOrientation}
+          onChangeRobotSize={setEditFieldRobotSize}
+          onChangeRobotWidth={setEditFieldRobotWidth}
+          onChangeShowGrid={setEditFieldShowGrid}
+          onChangeAllianceFlip={setEditFieldAllianceFlip}
+          onChangeTrailSeconds={setEditFieldTrailSeconds}
+        />
+      )}
 
       {hasStyleOptions && (
         <StyleSelect isBoolean={isBoolean} isRotationSingle={isRotationSingle} value={editStyle} onChange={setEditStyle} />
@@ -137,7 +185,7 @@ export default function CardSettingsPanel({ widget, classification, onSave }: Pr
         />
       )}
 
-      {!hasStyleOptions && <UnsupportedStyleNote classification={classification} />}
+      {!hasStyleOptions && !isField2d && <UnsupportedStyleNote classification={classification} />}
 
       <button
         onClick={handleSave}

@@ -1,7 +1,9 @@
-import React, { useEffect, useRef } from "react"
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react"
 import { TimeSeriesPoint } from "../../../utils/functions/mathTransforms"
 import { calcAxisStepSize } from "../../../utils/functions/axisTicks"
 import { ErrorBandPoint } from "../../../utils/functions/seriesAlgebra"
+import { PhasePoint, boundsOf } from "../../../utils/functions/phasePlot"
+import { FunctionLineStyle } from "../../../store/appStore"
 
 export type PlottedAxis = "left" | "right"
 
@@ -13,6 +15,14 @@ export interface PlottedSeries {
   unit: string | null
   points: TimeSeriesPoint[]
   errorBand?: ErrorBandPoint[]
+  visible: boolean
+  lineStyle: FunctionLineStyle
+  lineWidth: number
+}
+
+export interface GraphCanvasHandle {
+  /** PNG del gráfico tal como se ve, para el botón de export. */
+  toDataURL: () => string | null
 }
 
 interface Props {
@@ -21,6 +31,13 @@ interface Props {
   isLive: boolean
   selectedTime: number | null
   title?: string
+  showGrid?: boolean
+  showLegend?: boolean
+  /** Rangos fijos; null = autoescala con suavizado. */
+  leftRange?: [number, number] | null
+  rightRange?: [number, number] | null
+  /** Modo X-Y: cada serie se dibuja contra `phaseX` en vez de contra el tiempo. */
+  phaseData?: { xLabel: string; xUnit: string | null; bySeries: Record<string, PhasePoint[]> } | null
 }
 
 const PADDING_TOP = 30
@@ -32,169 +49,230 @@ const Y_SMOOTHING = 0.15
 const Y_STEP_TARGET_PX = 50
 const X_STEP_TARGET_PX = 90
 const ERROR_BAND_ALPHA = 0.18
+const POINT_RADIUS = 1.8
 
 interface YRange { yMin: number; yMax: number }
 interface SmoothState { left: YRange | null; right: YRange | null }
 
-export default function GraphCanvas({ series, windowSeconds, isLive, selectedTime, title = "Function Plot" }: Props) {
+const GraphCanvas = forwardRef<GraphCanvasHandle, Props>(function GraphCanvas(props, ref) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const smoothRef = useRef<SmoothState>({ left: null, right: null })
+  const [cursorX, setCursorX] = useState<number | null>(null)
+
+  // El estado que lee el loop de dibujo vive en un ref para no recrear el rAF
+  // en cada frame de datos (llegan a 20Hz).
+  const latest = useRef({ props, cursorX })
+  useEffect(() => { latest.current = { props, cursorX } })
+
+  useImperativeHandle(ref, () => ({
+    toDataURL: () => canvasRef.current?.toDataURL("image/png") ?? null,
+  }), [])
 
   useEffect(() => {
     let raf: number
     const draw = () => {
       const canvas = canvasRef.current
       const container = containerRef.current
-      if (canvas && container) renderFrame(canvas, container, series, windowSeconds, title, smoothRef, isLive, selectedTime)
+      if (canvas && container) {
+        renderFrame(canvas, container, latest.current.props, smoothRef, latest.current.cursorX)
+      }
       raf = requestAnimationFrame(draw)
     }
     raf = requestAnimationFrame(draw)
     return () => cancelAnimationFrame(raf)
-  }, [series, windowSeconds, title, isLive, selectedTime])
+  }, [])
 
   return (
-    <div ref={containerRef} style={{ width: "100%", height: "100%", position: "relative" }}>
+    <div
+      ref={containerRef}
+      style={{ width: "100%", height: "100%", position: "relative" }}
+      onMouseMove={e => {
+        const rect = e.currentTarget.getBoundingClientRect()
+        setCursorX(e.clientX - rect.left)
+      }}
+      onMouseLeave={() => setCursorX(null)}
+    >
       <canvas ref={canvasRef} style={{ width: "100%", height: "100%", display: "block" }} />
     </div>
   )
+})
+
+export default GraphCanvas
+
+function computeTargetRange(values: number[]): YRange {
+  const b = boundsOf(values)
+  return { yMin: b.min, yMax: b.max }
 }
 
-function computeTargetRange(points: TimeSeriesPoint[], xMin: number): YRange {
-  let yMin = Infinity
-  let yMax = -Infinity
-  points.forEach(p => {
-    if (p.t < xMin) return
-    if (p.v < yMin) yMin = p.v
-    if (p.v > yMax) yMax = p.v
-  })
-  if (!isFinite(yMin) || !isFinite(yMax)) { yMin = -1; yMax = 1 }
-  if (yMax - yMin < 1e-6) { yMin -= 1; yMax += 1 }
-  const pad = (yMax - yMin) * 0.08
-  return { yMin: yMin - pad, yMax: yMax + pad }
-}
-
-function smoothTowards(current: YRange | null, target: YRange): YRange {
-  if (!current) return target
+function smoothRange(prev: YRange | null, target: YRange): YRange {
+  if (prev === null) return target
   return {
-    yMin: current.yMin + (target.yMin - current.yMin) * Y_SMOOTHING,
-    yMax: current.yMax + (target.yMax - current.yMax) * Y_SMOOTHING,
+    yMin: prev.yMin + (target.yMin - prev.yMin) * Y_SMOOTHING,
+    yMax: prev.yMax + (target.yMax - prev.yMax) * Y_SMOOTHING,
   }
 }
 
 function formatTick(v: number, unit: string | null): string {
   const abs = Math.abs(v)
-  const numeric = abs >= 1000 ? v.toFixed(0) : abs >= 1 ? v.toFixed(2) : v.toFixed(3)
-  return unit ? `${numeric} ${unit}` : numeric
+  let text: string
+  if (abs !== 0 && (abs >= 1e5 || abs < 1e-3)) text = v.toExponential(1).replace("+", "")
+  else if (v % 1 === 0) text = v.toString()
+  else text = v.toFixed(2)
+  return unit ? `${text} ${unit}` : text
 }
 
-function axisUnit(seriesOnAxis: PlottedSeries[]): string | null {
-  if (seriesOnAxis.length === 0) return null
-  const first = seriesOnAxis[0].unit
-  if (!first) return null
-  return seriesOnAxis.every(s => s.unit === first) ? first : null
-}
-
-// Convierte un color hex ("#6262f1") a rgba con el alpha dado, para el
-// relleno translúcido de la banda de error usando el mismo color de la serie.
 function hexToRgba(hex: string, alpha: number): string {
   const clean = hex.replace("#", "")
-  const full = clean.length === 3 ? clean.split("").map(c => c + c).join("") : clean
-  const value = parseInt(full, 16)
-  if (isNaN(value)) return `rgba(128, 128, 128, ${alpha})`
-  const r = (value >> 16) & 255
-  const g = (value >> 8) & 255
-  const b = value & 255
+  const r = parseInt(clean.slice(0, 2), 16)
+  const g = parseInt(clean.slice(2, 4), 16)
+  const b = parseInt(clean.slice(4, 6), 16)
   return `rgba(${r}, ${g}, ${b}, ${alpha})`
 }
 
 function renderFrame(
   canvas: HTMLCanvasElement,
   container: HTMLDivElement,
-  series: PlottedSeries[],
-  windowSeconds: number,
-  title: string,
+  props: Props,
   smoothRef: React.MutableRefObject<SmoothState>,
-  isLive: boolean,
-  selectedTime: number | null,
+  cursorX: number | null,
 ) {
-  const dpr = window.devicePixelRatio || 1
+  const {
+    series, windowSeconds, selectedTime, title = "Function Plot",
+    showGrid = true, showLegend = true, leftRange: leftLock, rightRange: rightLock, phaseData,
+  } = props
+
   const width = container.clientWidth
   const height = container.clientHeight
   if (width === 0 || height === 0) return
-  if (canvas.width !== width * dpr || canvas.height !== height * dpr) {
-    canvas.width = width * dpr
-    canvas.height = height * dpr
+
+  const dpr = window.devicePixelRatio || 1
+  const pixelW = Math.round(width * dpr)
+  const pixelH = Math.round(height * dpr)
+  if (canvas.width !== pixelW || canvas.height !== pixelH) {
+    canvas.width = pixelW
+    canvas.height = pixelH
   }
+
   const ctx = canvas.getContext("2d")
   if (!ctx) return
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-  ctx.clearRect(0, 0, width, height)
 
-  const styles = getComputedStyle(document.documentElement)
-  const colorText = styles.getPropertyValue("--text-primary").trim() || "#e8e6e1"
-  const colorMuted = styles.getPropertyValue("--text-muted").trim() || "#807d78"
-  const colorGrid = styles.getPropertyValue("--border-light").trim() || "#2c2a28"
-  const colorBorder = styles.getPropertyValue("--border-main").trim() || "#383532"
-  const colorPlotBg = styles.getPropertyValue("--bg-input").trim() || "#0f0e0d"
+  const style = getComputedStyle(container)
+  const colorText = style.getPropertyValue("--text-primary").trim() || "#1c1c1f"
+  const colorMuted = style.getPropertyValue("--text-muted").trim() || "#68686f"
+  const colorGrid = style.getPropertyValue("--grid-line").trim() || "rgba(0,0,0,0.06)"
+  const colorBorder = style.getPropertyValue("--border-main").trim() || "#c8c8cc"
+  const colorPanel = style.getPropertyValue("--bg-page").trim() || "#ffffff"
 
-  const leftSeries = series.filter(s => s.axis === "left")
-  const rightSeries = series.filter(s => s.axis === "right")
-  const showLeftAxis = leftSeries.length > 0 || rightSeries.length === 0
-  const showRightAxis = rightSeries.length > 0
+  ctx.fillStyle = colorPanel
+  ctx.fillRect(0, 0, width, height)
 
-  const now = isLive || selectedTime === null ? Date.now() / 1000 : selectedTime / 1e6
-  const xMin = now - windowSeconds
-  const xMax = now
+  const visibleSeries = series.filter(s => s.visible)
+  const isPhase = phaseData != null
 
-  const targetLeft = computeTargetRange(leftSeries.flatMap(s => s.points), xMin)
-  const targetRight = computeTargetRange(rightSeries.flatMap(s => s.points), xMin)
-  if (showLeftAxis) smoothRef.current.left = smoothTowards(smoothRef.current.left, targetLeft)
-  if (showRightAxis) smoothRef.current.right = smoothTowards(smoothRef.current.right, targetRight)
-  const leftRange = smoothRef.current.left ?? targetLeft
-  const rightRange = smoothRef.current.right ?? targetRight
+  // --- Rangos ---------------------------------------------------------------
+  const valuesFor = (axis: PlottedAxis): number[] => {
+    const out: number[] = []
+    visibleSeries.filter(s => s.axis === axis).forEach(s => {
+      if (isPhase) (phaseData!.bySeries[s.id] ?? []).forEach(p => out.push(p.y))
+      else s.points.forEach(p => out.push(p.v))
+    })
+    return out
+  }
 
-  const leftUnit = axisUnit(leftSeries)
-  const rightUnit = axisUnit(rightSeries)
+  const resolve = (axis: PlottedAxis, lock: [number, number] | null | undefined): YRange => {
+    if (lock) return { yMin: lock[0], yMax: lock[1] }
+    const target = computeTargetRange(valuesFor(axis))
+    const smoothed = smoothRange(smoothRef.current[axis], target)
+    smoothRef.current[axis] = smoothed
+    return smoothed
+  }
 
+  const leftRange = resolve("left", leftLock)
+  const rightRange = resolve("right", rightLock)
+
+  const hasLeft = visibleSeries.some(s => s.axis === "left") || series.length === 0
+  const hasRight = visibleSeries.some(s => s.axis === "right")
+
+  const leftUnit = visibleSeries.find(s => s.axis === "left")?.unit ?? null
+  const rightUnit = visibleSeries.find(s => s.axis === "right")?.unit ?? null
+
+  // --- Layout ---------------------------------------------------------------
   ctx.font = "10px 'Segoe UI', Arial, sans-serif"
-
-  const graphTop = PADDING_TOP
-  const graphBottom = height - PADDING_BOTTOM
-  const graphHeightPx = Math.max(1, graphBottom - graphTop)
-
-  const leftStep = calcAxisStepSize([leftRange.yMin, leftRange.yMax], graphHeightPx, Y_STEP_TARGET_PX)
-  const rightStep = calcAxisStepSize([rightRange.yMin, rightRange.yMax], graphHeightPx, Y_STEP_TARGET_PX)
-
-  const measureAxisTextWidth = (range: YRange, step: number, unit: string | null): number => {
-    let widest = 0
+  const measureAxis = (range: YRange, unit: string | null) => {
+    const step = calcAxisStepSize([range.yMin, range.yMax], height - PADDING_TOP - PADDING_BOTTOM, Y_STEP_TARGET_PX)
+    let w = 0
     let v = Math.ceil(range.yMin / step) * step
     let guard = 0
     while (v <= range.yMax && guard++ < 200) {
-      widest = Math.max(widest, ctx.measureText(formatTick(v, unit)).width)
+      w = Math.max(w, ctx.measureText(formatTick(v, unit)).width)
       v += step
     }
-    return Math.ceil(widest / 2) * 2
+    return { step, width: Math.ceil(w) }
   }
 
-  const graphLeft = PADDING_OUTER + (showLeftAxis ? AXIS_LABEL_GAP + measureAxisTextWidth(leftRange, leftStep, leftUnit) : 0)
-  const graphRight = width - (PADDING_OUTER + (showRightAxis ? AXIS_LABEL_GAP + measureAxisTextWidth(rightRange, rightStep, rightUnit) : 0))
+  const leftAxis = measureAxis(leftRange, leftUnit)
+  const rightAxis = measureAxis(rightRange, rightUnit)
+
+  const graphTop = PADDING_TOP
+  const graphBottom = height - PADDING_BOTTOM
+  const graphLeft = PADDING_OUTER + (hasLeft ? leftAxis.width + AXIS_LABEL_GAP + AXIS_TICK_LEN : 0)
+  const graphRight = width - PADDING_OUTER - (hasRight ? rightAxis.width + AXIS_LABEL_GAP + AXIS_TICK_LEN : 0)
   const graphWidth = Math.max(1, graphRight - graphLeft)
-  const graphHeight = graphHeightPx
+  const graphHeight = Math.max(1, graphBottom - graphTop)
 
-  ctx.fillStyle = colorPlotBg
-  ctx.fillRect(graphLeft, graphTop, graphWidth, graphHeight)
+  // --- Eje X ----------------------------------------------------------------
+  let xMin: number
+  let xMax: number
+  let xUnit: string | null = null
 
-  const toX = (t: number) => graphLeft + ((t - xMin) / (xMax - xMin)) * graphWidth
-  const toY = (v: number, range: YRange) => graphBottom - ((v - range.yMin) / (range.yMax - range.yMin)) * graphHeight
+  if (isPhase) {
+    const xs: number[] = []
+    visibleSeries.forEach(s => (phaseData!.bySeries[s.id] ?? []).forEach(p => xs.push(p.x)))
+    const b = boundsOf(xs)
+    xMin = b.min
+    xMax = b.max
+    xUnit = phaseData!.xUnit
+  } else {
+    let latest = -Infinity
+    visibleSeries.forEach(s => {
+      const last = s.points[s.points.length - 1]
+      if (last && last.t > latest) latest = last.t
+    })
+    if (!isFinite(latest)) latest = selectedTime !== null ? selectedTime / 1e6 : 0
+    xMax = latest
+    xMin = latest - windowSeconds
+  }
 
-  const gridRange = showLeftAxis ? leftRange : rightRange
-  const gridStep = showLeftAxis ? leftStep : rightStep
-  ctx.strokeStyle = colorGrid
-  ctx.lineWidth = 1
-  {
-    let v = Math.ceil(gridRange.yMin / gridStep) * gridStep
+  const toX = (v: number) => graphLeft + ((v - xMin) / (xMax - xMin || 1)) * graphWidth
+  const toY = (v: number, r: YRange) =>
+    graphBottom - ((v - r.yMin) / (r.yMax - r.yMin || 1)) * graphHeight
+
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(graphLeft, graphTop, graphWidth, graphHeight)
+  ctx.clip()
+
+  // --- Grilla ---------------------------------------------------------------
+  const xStep = calcAxisStepSize([xMin, xMax], graphWidth, X_STEP_TARGET_PX)
+  if (showGrid) {
+    ctx.strokeStyle = colorGrid
+    ctx.lineWidth = 1
+    let xTick = Math.ceil(xMin / xStep) * xStep
     let guard = 0
+    while (xTick <= xMax && guard++ < 200) {
+      const x = toX(xTick)
+      ctx.beginPath()
+      ctx.moveTo(x, graphTop)
+      ctx.lineTo(x, graphBottom)
+      ctx.stroke()
+      xTick += xStep
+    }
+    const gridRange = hasLeft ? leftRange : rightRange
+    const gridStep = hasLeft ? leftAxis.step : rightAxis.step
+    let v = Math.ceil(gridRange.yMin / gridStep) * gridStep
+    guard = 0
     while (v <= gridRange.yMax && guard++ < 200) {
       const y = toY(v, gridRange)
       ctx.beginPath()
@@ -205,112 +283,242 @@ function renderFrame(
     }
   }
 
-  if (showLeftAxis) {
-    ctx.fillStyle = colorMuted
-    ctx.strokeStyle = colorMuted
-    ctx.textAlign = "right"
-    ctx.textBaseline = "middle"
-    let v = Math.ceil(leftRange.yMin / leftStep) * leftStep
-    let guard = 0
-    while (v <= leftRange.yMax && guard++ < 200) {
-      const y = toY(v, leftRange)
-      ctx.fillText(formatTick(v, leftUnit), graphLeft - AXIS_LABEL_GAP, y)
+  // --- Banda de error -------------------------------------------------------
+  if (!isPhase) {
+    visibleSeries.forEach(s => {
+      if (!s.errorBand || s.errorBand.length < 2) return
+      const range = s.axis === "left" ? leftRange : rightRange
       ctx.beginPath()
-      ctx.moveTo(graphLeft - AXIS_TICK_LEN, y)
-      ctx.lineTo(graphLeft, y)
-      ctx.stroke()
-      v += leftStep
-    }
+      s.errorBand.forEach((p, i) => {
+        const x = toX(p.t)
+        const y = toY(p.actual, range)
+        if (i === 0) ctx.moveTo(x, y)
+        else ctx.lineTo(x, y)
+      })
+      for (let k = s.errorBand.length - 1; k >= 0; k--) {
+        ctx.lineTo(toX(s.errorBand[k].t), toY(s.errorBand[k].target, range))
+      }
+      ctx.closePath()
+      ctx.fillStyle = hexToRgba(s.color, ERROR_BAND_ALPHA)
+      ctx.fill()
+    })
   }
 
-  if (showRightAxis) {
-    ctx.fillStyle = colorMuted
-    ctx.strokeStyle = colorMuted
-    ctx.textAlign = "left"
-    ctx.textBaseline = "middle"
-    let v = Math.ceil(rightRange.yMin / rightStep) * rightStep
-    let guard = 0
-    while (v <= rightRange.yMax && guard++ < 200) {
-      const y = toY(v, rightRange)
-      ctx.fillText(formatTick(v, rightUnit), graphRight + AXIS_LABEL_GAP, y)
-      ctx.beginPath()
-      ctx.moveTo(graphRight, y)
-      ctx.lineTo(graphRight + AXIS_TICK_LEN, y)
-      ctx.stroke()
-      v += rightStep
+  // --- Series ---------------------------------------------------------------
+  visibleSeries.forEach(s => {
+    const range = s.axis === "left" ? leftRange : rightRange
+    const pts: { x: number; y: number }[] = isPhase
+      ? (phaseData!.bySeries[s.id] ?? []).map(p => ({ x: toX(p.x), y: toY(p.y, range) }))
+      : s.points.map(p => ({ x: toX(p.t), y: toY(p.v, range) }))
+
+    if (pts.length === 0) return
+
+    ctx.strokeStyle = s.color
+    ctx.fillStyle = s.color
+    ctx.lineWidth = s.lineWidth
+    ctx.lineJoin = "round"
+    ctx.lineCap = "round"
+
+    if (s.lineStyle === "points") {
+      pts.forEach(p => {
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, POINT_RADIUS + s.lineWidth * 0.3, 0, Math.PI * 2)
+        ctx.fill()
+      })
+      return
     }
+    if (pts.length < 2) return
+
+    ctx.beginPath()
+    pts.forEach((p, i) => {
+      if (i === 0) ctx.moveTo(p.x, p.y)
+      // "stepped" mantiene el valor hasta la muestra siguiente, que es lo
+      // correcto para señales que solo cambian cuando el robot las publica.
+      else if (s.lineStyle === "stepped") { ctx.lineTo(p.x, pts[i - 1].y); ctx.lineTo(p.x, p.y) }
+      else ctx.lineTo(p.x, p.y)
+    })
+    ctx.stroke()
+  })
+
+  ctx.restore()
+
+  // --- Crosshair ------------------------------------------------------------
+  if (cursorX !== null && cursorX >= graphLeft && cursorX <= graphRight && visibleSeries.length > 0) {
+    ctx.strokeStyle = colorMuted
+    ctx.globalAlpha = 0.45
+    ctx.setLineDash([3, 3])
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    ctx.moveTo(cursorX, graphTop)
+    ctx.lineTo(cursorX, graphBottom)
+    ctx.stroke()
+    ctx.setLineDash([])
+    ctx.globalAlpha = 1
+
+    const xValue = xMin + ((cursorX - graphLeft) / graphWidth) * (xMax - xMin)
+    drawCursorReadout(ctx, {
+      series: visibleSeries, phaseData, xValue, isPhase,
+      leftRange, rightRange, toY, cursorX, graphTop, graphRight, graphLeft,
+      colorText, colorPanel, colorBorder, xUnit,
+    })
   }
 
-  const xStep = calcAxisStepSize([xMin, xMax], graphWidth, X_STEP_TARGET_PX)
-  let xTick = Math.ceil(xMin / xStep) * xStep
+  // --- Ejes -----------------------------------------------------------------
+  ctx.font = "10px 'Segoe UI', Arial, sans-serif"
+  ctx.strokeStyle = colorBorder
+  ctx.fillStyle = colorMuted
+  ctx.lineWidth = 1
+
+  const drawYAxis = (range: YRange, step: number, unit: string | null, side: "left" | "right") => {
+    ctx.textAlign = side === "left" ? "right" : "left"
+    ctx.textBaseline = "middle"
+    let v = Math.ceil(range.yMin / step) * step
+    let guard = 0
+    while (v <= range.yMax && guard++ < 200) {
+      const y = toY(v, range)
+      const anchor = side === "left" ? graphLeft : graphRight
+      const dir = side === "left" ? -1 : 1
+      ctx.fillText(formatTick(v, unit), anchor + dir * (AXIS_TICK_LEN + AXIS_LABEL_GAP), y)
+      ctx.beginPath()
+      ctx.moveTo(anchor, y)
+      ctx.lineTo(anchor + dir * AXIS_TICK_LEN, y)
+      ctx.stroke()
+      v += step
+    }
+  }
+  if (hasLeft) drawYAxis(leftRange, leftAxis.step, leftUnit, "left")
+  if (hasRight) drawYAxis(rightRange, rightAxis.step, rightUnit, "right")
+
   ctx.textAlign = "center"
   ctx.textBaseline = "top"
-  ctx.fillStyle = colorMuted
+  let xTick = Math.ceil(xMin / xStep) * xStep
   let guard = 0
   while (xTick <= xMax && guard++ < 200) {
     const x = toX(xTick)
-    ctx.strokeStyle = colorGrid
+    // En modo tiempo el eje se rotula RELATIVO al presente: un timestamp
+    // absoluto del servidor (decenas de miles de segundos) no dice nada.
+    const label = isPhase ? formatTick(xTick, xUnit) : `${(xTick - xMax).toFixed(xStep < 1 ? 1 : 0)}s`
+    ctx.fillText(label, x, graphBottom + 8)
     ctx.beginPath()
-    ctx.moveTo(x, graphTop)
-    ctx.lineTo(x, graphBottom)
+    ctx.moveTo(x, graphBottom)
+    ctx.lineTo(x, graphBottom + AXIS_TICK_LEN)
     ctx.stroke()
-    ctx.fillText(`${Math.round(xTick - now)}s`, x, graphBottom + 8)
     xTick += xStep
   }
 
-  series.forEach(s => {
-    if (!s.errorBand || s.errorBand.length < 2) return
-    const range = s.axis === "left" ? leftRange : rightRange
-    const visible = s.errorBand.filter(p => p.t >= xMin - xStep)
-    if (visible.length < 2) return
-
-    ctx.beginPath()
-    visible.forEach((p, i) => {
-      const x = toX(p.t)
-      const y = toY(p.actual, range)
-      if (i === 0) ctx.moveTo(x, y)
-      else ctx.lineTo(x, y)
-    })
-    for (let k = visible.length - 1; k >= 0; k--) {
-      const p = visible[k]
-      ctx.lineTo(toX(p.t), toY(p.target, range))
-    }
-    ctx.closePath()
-    ctx.fillStyle = hexToRgba(s.color, ERROR_BAND_ALPHA)
-    ctx.fill()
-  })
-
-  series.forEach(s => {
-    const range = s.axis === "left" ? leftRange : rightRange
-    const visible = s.points.filter(p => p.t >= xMin - xStep)
-    if (visible.length < 2) return
-    ctx.strokeStyle = s.color
-    ctx.lineWidth = 1.6
-    ctx.lineJoin = "round"
-    ctx.beginPath()
-    visible.forEach((p, i) => {
-      const x = toX(p.t)
-      const y = toY(p.v, range)
-      if (i === 0) ctx.moveTo(x, y)
-      else ctx.lineTo(x, y)
-    })
-    ctx.stroke()
-  })
-
   ctx.strokeStyle = colorBorder
-  ctx.lineWidth = 1
   ctx.strokeRect(graphLeft, graphTop, graphWidth, graphHeight)
 
+  // --- Título y leyenda -----------------------------------------------------
   ctx.fillStyle = colorText
   ctx.font = "bold 12px 'Segoe UI', Arial, sans-serif"
-  ctx.textAlign = "center"
+  ctx.textAlign = "left"
   ctx.textBaseline = "alphabetic"
-  ctx.fillText(title, (graphLeft + graphRight) / 2, 18)
+  ctx.fillText(isPhase ? `${title} — X: ${phaseData!.xLabel}` : title, graphLeft, 18)
+
+  if (showLegend && visibleSeries.length > 0) {
+    ctx.font = "10px 'Segoe UI', Arial, sans-serif"
+    ctx.textAlign = "right"
+    let x = graphRight
+    for (let i = visibleSeries.length - 1; i >= 0; i--) {
+      const s = visibleSeries[i]
+      const w = ctx.measureText(s.label).width
+      ctx.fillStyle = s.color
+      ctx.fillText(s.label, x, 18)
+      ctx.fillRect(x - w - 12, 11, 8, 3)
+      x -= w + 22
+      if (x < graphLeft + 60) break
+    }
+  }
 
   if (series.length === 0) {
     ctx.fillStyle = colorMuted
     ctx.font = "12px 'Segoe UI', Arial, sans-serif"
+    ctx.textAlign = "center"
     ctx.textBaseline = "middle"
-    ctx.fillText("Drag a double value here to plot it", (graphLeft + graphRight) / 2, (graphTop + graphBottom) / 2)
+    ctx.fillText("Drag a numeric topic here to plot it", (graphLeft + graphRight) / 2, (graphTop + graphBottom) / 2)
   }
+}
+
+// Caja con el valor de cada serie en la posición del cursor. Es lo que
+// convierte el gráfico en algo medible en vez de solo mirable.
+function drawCursorReadout(
+  ctx: CanvasRenderingContext2D,
+  o: {
+    series: PlottedSeries[]
+    phaseData: Props["phaseData"]
+    xValue: number
+    isPhase: boolean
+    leftRange: YRange
+    rightRange: YRange
+    toY: (v: number, r: YRange) => number
+    cursorX: number
+    graphTop: number
+    graphLeft: number
+    graphRight: number
+    colorText: string
+    colorPanel: string
+    colorBorder: string
+    xUnit: string | null
+  },
+) {
+  const rows: { label: string; value: string; color: string }[] = []
+
+  for (const s of o.series) {
+    let value: number | null = null
+    if (o.isPhase) {
+      const pts = o.phaseData!.bySeries[s.id] ?? []
+      let best: PhasePoint | null = null
+      let bestDist = Infinity
+      for (const p of pts) {
+        const d = Math.abs(p.x - o.xValue)
+        if (d < bestDist) { bestDist = d; best = p }
+      }
+      value = best ? best.y : null
+    } else {
+      // Última muestra en o antes del cursor: es el valor que el robot tenía
+      // en ese instante, no una interpolación inventada.
+      let found: number | null = null
+      for (const p of s.points) {
+        if (p.t <= o.xValue) found = p.v
+        else break
+      }
+      value = found
+    }
+    if (value === null) continue
+    rows.push({ label: s.label, value: formatTick(value, s.unit), color: s.color })
+  }
+  if (rows.length === 0) return
+
+  ctx.font = "10px 'Segoe UI', Arial, sans-serif"
+  const lineH = 13
+  const padding = 6
+  const boxW = Math.max(...rows.map(r => ctx.measureText(`${r.label}  ${r.value}`).width)) + padding * 2 + 10
+  const boxH = rows.length * lineH + padding * 2
+
+  // Se voltea al otro lado del cursor si no entra a la derecha.
+  let boxX = o.cursorX + 10
+  if (boxX + boxW > o.graphRight) boxX = o.cursorX - 10 - boxW
+  if (boxX < o.graphLeft) boxX = o.graphLeft
+  const boxY = o.graphTop + 6
+
+  ctx.fillStyle = o.colorPanel
+  ctx.globalAlpha = 0.94
+  ctx.fillRect(boxX, boxY, boxW, boxH)
+  ctx.globalAlpha = 1
+  ctx.strokeStyle = o.colorBorder
+  ctx.lineWidth = 1
+  ctx.strokeRect(boxX, boxY, boxW, boxH)
+
+  rows.forEach((r, i) => {
+    const y = boxY + padding + i * lineH + lineH / 2
+    ctx.fillStyle = r.color
+    ctx.fillRect(boxX + padding, y - 2, 6, 4)
+    ctx.fillStyle = o.colorText
+    ctx.textAlign = "left"
+    ctx.textBaseline = "middle"
+    ctx.fillText(r.label, boxX + padding + 11, y)
+    ctx.textAlign = "right"
+    ctx.fillText(r.value, boxX + boxW - padding, y)
+  })
 }

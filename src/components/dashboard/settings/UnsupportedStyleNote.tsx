@@ -1,4 +1,3 @@
-import React from "react"
 import { TopicClassification } from "../../../utils/dashboard/topicClassification"
 
 export default function UnsupportedStyleNote({ classification }: { classification: TopicClassification }) {

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>MARS Simulation Studio</title>
+
+<!--
+  Sin framework y sin bundler, a propósito (ver app/README.md). Lo que sí hay
+  ahora son módulos ES: la app pasó de cuatro controles a un editor de mundos
+  entero, y mantener eso en un único archivo era peor que la alternativa. El
+  navegador resuelve los imports por sí solo, así que sigue sin haber build
+  step: `cargo build` y ya.
+-->
+<link rel="stylesheet" href="css/tokens.css" />
+<link rel="stylesheet" href="css/app.css" />
+</head>
+
+<body>
+  <!--
+    La pantalla de carga vive en el HTML y no en un módulo a propósito: se
+    pinta con la primera pasada del navegador, antes de que ningún script se
+    haya evaluado. El esqueleto está aquí; los pasos los rellena js/splash.js
+    conforme ocurren de verdad.
+
+    Es también donde se muestra un fallo de arranque, que es el único caso en
+    el que no hay ninguna otra superficie donde escribir.
+  -->
+  <div id="splash">
+    <div class="splash-card">
+      <div class="splash-head">
+        <img src="mss.png" alt="" aria-hidden="true" />
+        <div>
+          <div class="splash-name">MARS Simulation Studio</div>
+          <div class="splash-sub">Physics simulation and world authoring</div>
+        </div>
+      </div>
+
+      <div class="splash-bar"><span id="splash-fill"></span></div>
+      <div class="splash-line">
+        <span id="splash-step">Starting…</span>
+        <span id="splash-pct">0%</span>
+      </div>
+
+      <ol id="splash-steps"></ol>
+      <div id="splash-error"></div>
+    </div>
+
+    <div class="splash-foot">
+      <span>Powered by</span>
+      <img src="icons/gazebo-logo.svg" alt="Gazebo" />
+    </div>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

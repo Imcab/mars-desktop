@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="48" height="48" version="1.0">
+  <defs>
+    <linearGradient id="a">
+      <stop offset="0" stop-opacity=".3137255"/>
+      <stop offset="1" stop-color="#fff"/>
+    </linearGradient>
+    <linearGradient id="b">
+      <stop offset="0" stop-color="#fff"/>
+      <stop offset=".20971029" stop-color="#fff" stop-opacity="0"/>
+      <stop offset=".34936365" stop-color="#fff" stop-opacity=".81065089"/>
+      <stop offset=".42850056" stop-color="#fff" stop-opacity="0"/>
+      <stop offset=".52134049" stop-color="#fff"/>
+      <stop offset=".55746967" stop-color="#fff" stop-opacity="0"/>
+      <stop offset=".71001518" stop-color="#fff" stop-opacity=".56804734"/>
+      <stop offset=".74394959" stop-color="#fff" stop-opacity="0"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="c">
+      <stop offset="0" stop-color="#eeeeec"/>
+      <stop offset="1" stop-color="#92948f"/>
+    </linearGradient>
+    <linearGradient xlink:href="#a" id="d" x1="-177.27766" x2="-172.82857" y1="9.2039175" y2="25.808161" gradientUnits="userSpaceOnUse"/>
+    <linearGradient xlink:href="#b" id="f" x1="-.11694507" x2="48.025963" y1="10.14653" y2="37.941853" gradientUnits="userSpaceOnUse"/>
+    <radialGradient xlink:href="#c" id="e" cx="36.126339" cy="18.020473" r="13.55237" fx="36.126339" fy="18.020473" gradientTransform="matrix(2.73917 0 0 2.24786 -274.85735 -10.683483)" gradientUnits="userSpaceOnUse"/>
+  </defs>
+  <path fill="url(#d)" fill-rule="evenodd" d="M-186.59375 9c-.79098.0508993-1.40643.7073844-1.40625 1.5v27c.00795.531998.29661 1.020136.75896 1.283419.46235.263283 1.02946.262458 1.49104-.002169l23-13.5c.44575-.273201.71747-.758438.71747-1.28125s-.27172-1.008049-.71747-1.28125l-23-13.5c-.25346-.1546737-.54707-.2307931-.84375-.21875z" opacity=".4" transform="translate(200)"/>
+  <path fill="url(#e)" fill-rule="evenodd" stroke="#555753" stroke-dashoffset=".69999992" stroke-linecap="square" stroke-width=".99999982" d="M-186.5 37.500001V10.500456l23 13.512002-23 13.487543z" transform="translate(200)"/>
+  <path fill="none" stroke="#fff" stroke-dashoffset=".69999992" stroke-linecap="square" stroke-width=".99999982" d="M14.5 35.750028v-23.4996l20 11.760444-20 11.739156z"/>
+  <path fill="url(#f)" fill-rule="evenodd" d="M14 11.375v25.25C21.167154 32.421341 28.332238 28.204015 35.5 24c-7.167165-4.209848-14.33225-8.414809-21.5-12.625z" opacity=".15" transform="matrix(1 0 0 -1 0 48)"/>
+</svg>

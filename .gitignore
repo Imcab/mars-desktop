@@ -22,3 +22,31 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Simulación
+sim/build/
+sim/install/
+sim/dist/
+sim/.gzsource/src/
+# Persistencia que deja el servidor NT4 de nt-probe al correr los tests.
+sim/networktables.json
+
+# Bridge de simulacion
+sim/bridge/target/
+sim/app/target/
+# Logs que dejan los procesos que lanza MARS Sim.
+# Canchas 3D del Studio: 17 MB por cancha de asset de terceros, y la Field
+# Library las reinstala en un clic desde las que ya tiene mars-desktop. Un
+# mundo que referencia una cancha ausente sigue corriendo --- pierde el visual,
+# no la fisica --- asi que ignorarlas degrada bien.
+sim/fields/
+
+sim/build/app-*.log
+sim/build/app-*.err
+
+# Instalador
+installer/target/
+installer/gen/schemas/
+# Paquetes que produce scripts/package-release.mjs: son artefactos de build,
+# viven en las releases de GitHub, no en el repo.
+release/

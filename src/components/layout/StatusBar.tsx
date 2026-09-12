@@ -1,127 +1,119 @@
-import { ConnectionState } from "../../store/appStore"
+import { useEffect, useState } from "react"
+import { invoke } from "@tauri-apps/api/core"
+import { ConnectionState, LogSource } from "../../store/appStore"
+
+interface NTLinkStatus {
+  address: string
+  port: number
+  connected: boolean
+  latency_us: number
+  server_time_us: number | null
+}
 
 interface Props {
   connection: ConnectionState
   projectName: string | null
+  logSource: LogSource | null
 }
 
-export default function StatusBar({ connection, projectName }: Props) {
-  // 1. Lógica del bloque de conexión (Verde para SIM, Rojo para Real, Gris para desconectado)
-  const connBg = connection === "sim" ? "var(--status-sim)" : connection === "real" ? "var(--status-real)" : "rgba(255, 255, 255, 0.08)"
-  // Texto oscuro sobre fondos brillantes para contraste óptimo
-  const connColor = connection !== "disconnected" ? "#111" : "var(--text-light)" 
-  const connLabel = connection === "sim" ? "Sim running" : connection === "real" ? "Real robot" : "Not connected"
-
-  // 2. Lógica del bloque de proyecto (Naranja si hay proyecto, gris si no)
-  const projectBg = projectName ? "#d97706" : "rgba(255, 255, 255, 0.08)"
-  const projectColor = projectName ? "#fff" : "var(--text-light)"
+// Barra inferior estilo el panel "Time" de RViz: campos "Label: [valor en
+// caja]" en fila, plana, sin bloques de color sólido — el color se reserva
+// para el punto de estado de conexión, todo lo demás es texto+caja neutra.
+export default function StatusBar({ connection, projectName, logSource }: Props) {
+  // Un log cargado sustituye a la conexion: comparten el buffer en el backend.
+  const connLabel = logSource
+    ? "Log file"
+    : connection === "sim" ? "Sim running" : connection === "real" ? "Real robot" : "Not connected"
+  const connDotColor = logSource
+    ? "var(--mars-accent)"
+    : connection === "sim" ? "var(--status-sim)" : connection === "real" ? "var(--status-real)" : "var(--text-light)"
+  const link = useNTLinkStatus(connection)
 
   return (
     <div style={{
       background: "var(--bg-dark)",
-      height: 26, 
+      height: 26,
       display: "flex",
       alignItems: "center",
-      padding: 0, // Quitamos el padding global para que los bloques toquen los bordes superior e inferior
-      gap: 1, // Separador de 1px entre bloques
+      padding: "0 10px",
+      gap: 14,
       flexShrink: 0,
-      borderTop: "1px solid var(--border-main)"
+      borderTop: "1px solid var(--border-main)",
     }}>
-      
-      {/* BLOQUE DE CONEXIÓN */}
-      <StatusItem 
-        clickable 
-        onClick={() => console.log("Abrir modal de conexión")}
-        bg={connBg}
-        color={connColor}
-        fontWeight={connection !== "disconnected" ? 600 : 400}
-      >
-        <div style={{ 
-          width: 8, height: 8, borderRadius: "50%", 
-          background: connection !== "disconnected" ? "#111" : "var(--text-secondary)"
-        }} />
+      <StatusField label="Connection">
+        <span style={{ width: 6, height: 6, borderRadius: "50%", background: connDotColor, flexShrink: 0 }} />
         {connLabel}
-      </StatusItem>
+      </StatusField>
 
-      <StatusItem clickable onClick={() => console.log("Abrir detalles de red")}>
-        <i className="ti ti-network" style={{ fontSize: 13, marginRight: 2 }} />
-        NT4: {connection !== "disconnected" ? "localhost:5810" : "—"}
-      </StatusItem>
+      {/* Host y puerto reales de la sesión: el destino ya no es siempre
+          localhost:5810 (puede ser el robot, la DS en 6767 o Systemcore). */}
+      <StatusField label={logSource ? "Source" : "NT4"}>
+        {logSource
+          ? `${logSource.name} · ${logSource.topic_count} topics`
+          : link ? `${link.address}:${link.port}` : "—"}
+      </StatusField>
 
-      {/* BLOQUE DE PROYECTO */}
-      <StatusItem 
-        clickable 
-        onClick={() => console.log("Ir a settings de proyecto")}
-        bg={projectBg}
-        color={projectColor}
-        fontWeight={projectName ? 600 : 400}
-      >
-        <i className="ti ti-folder" style={{ fontSize: 13, marginRight: 2 }} />
-        {projectName ?? "No project open"}
-      </StatusItem>
+      {/* Mitad del round trip medido con el ping RTT. "sync…" = todavía no
+          volvió ninguna respuesta, así que los relojes no están alineados. */}
+      {!logSource && (
+        <StatusField label="Latency">
+          {link === null
+            ? "—"
+            : link.server_time_us === null
+              ? "sync…"
+              : `${(link.latency_us / 1000).toFixed(1)} ms`}
+        </StatusField>
+      )}
 
-      <div style={{ marginLeft: "auto" }}>
-        <StatusItem>MARS v1.0.0-dev</StatusItem>
+      <StatusField label="Project">
+        {projectName ?? "none"}
+      </StatusField>
+
+      <div style={{ marginLeft: "auto", fontSize: 10, color: "var(--text-light)" }}>
+        MARS v1.0.0-dev
       </div>
     </div>
   )
 }
 
-// Componente helper modificado para comportarse como bloque sólido
-interface StatusItemProps {
-  children: React.ReactNode
-  clickable?: boolean
-  onClick?: () => void
-  bg?: string
-  color?: string
-  fontWeight?: number
+// El estado del enlace lo mide el backend con el ping RTT; se relee a 1Hz
+// porque solo alimenta texto de la barra, no nada que se anime.
+function useNTLinkStatus(connection: ConnectionState): NTLinkStatus | null {
+  const [status, setStatus] = useState<NTLinkStatus | null>(null)
+
+  useEffect(() => {
+    if (connection === "disconnected") {
+      setStatus(null)
+      return
+    }
+
+    let cancelled = false
+    const poll = () => {
+      invoke<NTLinkStatus>("get_nt_link_status")
+        .then(s => { if (!cancelled) setStatus(s.connected ? s : null) })
+        .catch(() => { /* silencioso: puede pasar mientras reconecta */ })
+    }
+
+    poll()
+    const interval = setInterval(poll, 1000)
+    return () => { cancelled = true; clearInterval(interval) }
+  }, [connection])
+
+  return status
 }
 
-function StatusItem({ 
-  children, 
-  clickable, 
-  onClick, 
-  bg = "transparent", 
-  color = "var(--text-light)", 
-  fontWeight = 400 
-}: StatusItemProps) {
+function StatusField({ label, children }: { label: string, children: React.ReactNode }) {
   return (
-    <div 
-      onClick={onClick}
-      style={{ 
-        fontSize: 11, 
-        fontWeight,
-        color, 
-        background: bg,
-        display: "flex", 
-        alignItems: "center", 
-        gap: 6,
-        padding: "0 12px", // Padding horizontal amplio
-        height: "100%", // Se expande verticalmente
-        cursor: clickable ? "pointer" : "default",
-        transition: "all 0.15s ease",
-      }}
-      // Manejo de hover compatible con estilos en línea de React
-      onMouseEnter={e => {
-        if (clickable) {
-          if (bg === "transparent") {
-            e.currentTarget.style.background = "rgba(255, 255, 255, 0.1)";
-            e.currentTarget.style.color = "var(--text-primary)";
-          } else {
-            // Aclaramos el color de bloque existente un poco al hacer hover
-            e.currentTarget.style.filter = "brightness(1.15)";
-          }
-        }
-      }}
-      onMouseLeave={e => {
-        if (clickable) {
-          e.currentTarget.style.background = bg;
-          e.currentTarget.style.color = color;
-          e.currentTarget.style.filter = "brightness(1)";
-        }
-      }}
-    >
-      {children}
+    <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+      <span style={{ fontSize: 10, color: "var(--text-muted)" }}>{label}:</span>
+      <span style={{
+        display: "flex", alignItems: "center", gap: 4,
+        fontSize: 10.5, color: "var(--text-primary)", fontFamily: "ui-monospace, monospace",
+        background: "var(--bg-input)", border: "1px solid var(--border-main)", borderRadius: 2,
+        padding: "1px 6px", height: 16,
+      }}>
+        {children}
+      </span>
     </div>
   )
 }

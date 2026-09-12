@@ -1,0 +1,116 @@
+/* =========================================================================
+   MARS FRAMEWORK — COLOR PALETTE (LIGHT MODE)
+
+   Copia literal de la paleta de mars-desktop (src/styles/global.css). Los dos
+   productos tienen que verse como el mismo programa: chrome claro y gris
+   neutro, como AdvantageScope, RViz y MATLAB, con el color reservado para
+   iconos de función y datos en vivo.
+
+   Si un token cambia allá, cambia aquí. Está duplicado a propósito: esta app
+   no comparte toolchain de node con el dashboard, así que no hay forma de
+   importar el archivo — y una copia con esta nota puesta es más honesta que
+   un build step nuevo para 150 líneas de CSS.
+   ========================================================================= */
+
+:root {
+  /* Fondos */
+  --bg-app: #ececee;
+  --bg-page: #ffffff;
+  --bg-panel: #f7f7f8;
+  --bg-toolbar: #ececee;
+  --bg-menubar: #f0f0f1;
+  --bg-input: #ffffff;
+  --bg-dark: #eeeeef;
+
+  /* Texto */
+  --text-primary: #1c1c1f;
+  --text-secondary: #52525b;
+  --text-muted: #68686f;
+  --text-light: #6f6f76;
+
+  /* Bordes */
+  --border-light: #e8e8ea;
+  --border-main: #d4d4d8;
+  --border-dark: #b8b8bf;
+
+  /* Marca */
+  --mars-red: #a83c3c;
+  --mars-accent: #4a5fd9;
+  --mars-grey: #6b6b70;
+
+  /* Estados */
+  --status-success: #1f7a1f;
+  --status-error: #c21c1c;
+  --status-warning: #a1690a;
+  --status-sim: #1c8f1c;
+  --status-real: #1a7f1a;
+
+  --status-error-bg: rgba(194, 28, 28, 0.08);
+  --status-error-border: rgba(194, 28, 28, 0.3);
+  --status-warning-bg: rgba(161, 105, 10, 0.1);
+  --status-warning-border: rgba(161, 105, 10, 0.32);
+  --status-success-bg: rgba(31, 122, 31, 0.1);
+
+  /* Tipos de dato */
+  --type-numeric: var(--status-sim);
+  --type-boolean: var(--mars-red);
+  --type-string: #8a5a08;
+  --type-struct: #0e7490;
+  --type-array: #9333ea;
+
+  /* Headers */
+  --text-header-eyebrow: #5c5c62;
+  --text-header-title: #1c1c1f;
+  --text-header-subtitle: #6e6e74;
+
+  /* Iconos por categoría (wayfinding, >=3:1 sobre el chrome) */
+  --icon-cat-file: #1e4fc9;
+  --icon-cat-tools: #0f766e;
+  --icon-cat-modules: #8a5a08;
+  --icon-cat-config: #7c3aed;
+  --icon-toolbar: #4a4a50;
+  --toolbar-active-bg: rgba(74, 95, 217, 0.12);
+
+  /* Paneles acoplados estilo QDockWidget */
+  --bg-panel-header: #dcdce0;
+  --bg-panel-header-hover: #d0d0d5;
+  --bg-sidebar: #ececef;
+
+  /* Árbol estilo QTreeWidget (el "Displays" de RViz) */
+  --tree-row-height: 22px;
+  --icon-tree: #55565c;
+  --tree-hover-bg: #e0e0e4;
+  --tree-selection-bg: #2f6fdb;
+  --tree-selection-fg: #ffffff;
+  --tree-body-bg: #ffffff;
+
+  /* Botones clásicos (Add/Rename/Remove de los paneles de RViz) */
+  --btn-classic-bg: #e9e9ec;
+  --btn-classic-bg-hover: #f4f4f6;
+  --btn-classic-bg-active: #dcdce0;
+  --btn-classic-border: #adadb4;
+  --btn-classic-text-disabled: #a3a3a8;
+
+  /* Grid de fondo */
+  --grid-line: rgba(0, 0, 0, 0.055);
+  --grid-line-major: rgba(0, 0, 0, 0.13);
+
+  /* Barra de menú: la única franja oscura del chrome */
+  --bg-menubar-dark: #33343a;
+  --bg-menubar-dark-hover: #4a4b53;
+  --bg-menubar-dark-active: #2f6fdb;
+  --text-menubar: #ececed;
+  --text-menubar-dim: #a0a1a8;
+
+  /* Biseles estilo Qt/Win clásico */
+  --bevel-light: #ffffff;
+  --bevel-dark: #9c9ca4;
+
+  /* Sombras */
+  --shadow-soft: rgba(0, 0, 0, 0.1);
+  --shadow-modal: rgba(0, 0, 0, 0.35);
+
+  /* Tipografía */
+  --font-ui: "Segoe UI", Arial, sans-serif;
+  --font-mono: ui-monospace, Consolas, "Cascadia Mono", monospace;
+}

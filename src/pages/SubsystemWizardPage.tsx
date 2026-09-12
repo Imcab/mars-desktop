@@ -238,8 +238,8 @@ export default function SubsystemWizardPage({ projectPath }: Props) {
               flex: 1,
               padding: "8px 12px",
               borderRadius: 6,
-              border: `1px solid ${i === step ? "var(--bg-menubar)" : "var(--border-main)"}`,
-              background: i === step ? "var(--bg-menubar)" : "var(--bg-panel)",
+              border: `1px solid ${i === step ? "var(--mars-accent)" : "var(--border-main)"}`,
+              background: i === step ? "var(--mars-accent)" : "var(--bg-panel)",
               color: i === step ? "#fff" : "var(--text-secondary)",
               fontSize: 12,
               cursor: "pointer",
@@ -259,7 +259,7 @@ export default function SubsystemWizardPage({ projectPath }: Props) {
             <input style={{ ...inputStyle, flex: 1 }} value={config.targetDir} readOnly placeholder="Select a folder..." />
             <button
               onClick={handlePickFolder}
-              style={{ background: "var(--bg-menubar)", border: "none", borderRadius: 4, color: "#fff", padding: "6px 14px", cursor: "pointer", fontSize: 12 }}
+              style={{ background: "var(--mars-accent)", border: "none", borderRadius: 4, color: "#fff", padding: "6px 14px", cursor: "pointer", fontSize: 12 }}
             >
               Choose folder
             </button>
@@ -505,7 +505,7 @@ export default function SubsystemWizardPage({ projectPath }: Props) {
         <button
           disabled={step === 3 || (step === 0 && !canGoStep1)}
           onClick={() => setStep((s) => Math.min(3, s + 1))}
-          style={{ background: "var(--bg-menubar)", border: "none", color: "#fff", borderRadius: 6, padding: "8px 16px", cursor: "pointer", fontSize: 12 }}
+          style={{ background: "var(--mars-accent)", border: "none", color: "#fff", borderRadius: 6, padding: "8px 16px", cursor: "pointer", fontSize: 12 }}
         >
           Next
         </button>

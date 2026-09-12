@@ -1,5 +1,3 @@
-import React from "react"
-
 interface Props { value: number; min: number; max: number; suffix: string }
 
 export default function BarWidget({ value, min, max, suffix }: Props) {
