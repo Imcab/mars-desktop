@@ -26,16 +26,16 @@ export default function WelcomePage({ navigate, onOpenProject, onCreateTab, proj
       <div style={{ flex: 1, display: "flex", justifyContent: "center", overflowY: "auto" }}>
         <div style={{ width: "100%", maxWidth: 680, padding: "18px 24px 40px", display: "flex", flexDirection: "column", gap: 14 }}>
 
-          {/* Un proyecto es un proyecto de MARS. En la edicion Tools el panel
-              entero no aparece y Settings se va al panel de herramientas. */}
+          {/* A project is a MARS project. In the Tools edition the whole panel
+              is gone and Settings moves to the tools panel. */}
           {MARS_ENABLED && (
             <BevelPanel title="Project" icon="open-folder.svg">
               <LaunchList
                 items={[
                   ...PROJECT_ITEMS.flatMap(i => [
                     { svg: i.svg, title: i.label, desc: i.desc, page: i.page },
-                    // "Open project" es una accion, no una pagina: va detras de
-                    // "New project", como en el sidebar.
+                    // "Open project" is an action, not a page: it goes after
+                    // "New project", as in the sidebar.
                     ...(i.page === "creator"
                       ? [{ svg: "open-folder.svg", title: "Open project", desc: "Load from disk", action: onOpenProject }]
                       : []),
@@ -110,8 +110,8 @@ function Banner({ projectName }: { projectName: string | null }) {
         <div style={{ fontSize: 11.5, color: "var(--text-menubar)", letterSpacing: 0.4 }}>
           Modular Architecture for Robot Systems
         </div>
-        {/* En la edicion Tools no hay proyectos: anunciar que no hay ninguno
-            cargado seria hablar de algo que no existe. */}
+        {/* There are no projects in the Tools edition: announcing that none is
+            loaded would be talking about something that does not exist. */}
         {MARS_ENABLED && (
         <div style={{ fontSize: 10, marginTop: 2, fontFamily: "ui-monospace, monospace" }}>
           {projectName ? (

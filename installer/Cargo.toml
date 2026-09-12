@@ -1,23 +1,23 @@
-# MARS Installer: la aplicacion que instala, actualiza y desinstala el
-# ecosistema MARS en la maquina del equipo.
+# MARS Installer: the app that installs, updates and uninstalls the MARS
+# ecosystem on the team's machine.
 #
-# No comparte workspace con mars-desktop ni con el Studio a proposito: tiene
-# que poder compilarse y publicarse sin tocar nada de los productos que
-# instala, y sobre todo tiene que SOBREVIVIRLOS --- se queda en disco despues
-# de la instalacion para poder desinstalar.
+# It deliberately shares no workspace with mars-desktop or with the Studio: it
+# has to be buildable and publishable without touching any of the products it
+# installs, and above all it has to OUTLIVE them --- it stays on disk after the
+# installation so it can uninstall.
 #
-# No lleva toolchain de node. Su UI son modulos ES sueltos en ui/, igual que el
-# Simulation Studio: un instalador que arrastra un bundler para cinco pantallas
-# seria mas pesado que lo que instala.
+# It carries no node toolchain. Its UI is plain ES modules in ui/, like the
+# Simulation Studio: an installer that dragged a bundler along for five screens
+# would weigh more than what it installs.
 [package]
 name = "mars-installer"
 version = "1.0.0"
-description = "Instalador de MARS Desktop y su ecosistema"
+description = "Installer for MARS Desktop and its ecosystem"
 authors = ["STZ Robotics"]
 edition = "2021"
 
-# Ver la nota en src-tauri/Cargo.toml: sin `custom-protocol`, `tauri::is_dev()`
-# devuelve true y el binario no sirve la UI empotrada.
+# See the note in src-tauri/Cargo.toml: without `custom-protocol`,
+# `tauri::is_dev()` returns true and the binary does not serve the embedded UI.
 [features]
 default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]
@@ -37,14 +37,14 @@ sha2 = "0.10"
 tokio = { version = "1", features = ["full"] }
 futures-util = "0.3"
 
-# Misma configuracion de TLS que mars-desktop y por la misma razon: muchos
-# equipos trabajan detras del proxy de su escuela, que reemplaza los
-# certificados. Con las raices embebidas de webpki toda descarga fallaria ahi.
-# `stream` es lo que permite reportar progreso mientras baja.
+# The same TLS setup as mars-desktop and for the same reason: many teams work
+# behind their school's proxy, which replaces the certificates. With webpki's
+# embedded roots every download would fail there. `stream` is what makes it
+# possible to report progress while downloading.
 reqwest = { version = "0.13", default-features = false, features = ["rustls", "rustls-native-certs", "charset", "http2", "system-proxy", "stream", "json"] }
 
-# Los formatos de archivo se eligen por plataforma, asi que las librerias
-# tambien: el instalador de Windows nunca va a abrir un .tar.gz y viceversa.
+# Archive formats are chosen per platform, so the libraries are too: the
+# Windows installer will never open a .tar.gz, and vice versa.
 [target.'cfg(windows)'.dependencies]
 zip = { version = "2", default-features = false, features = ["deflate"] }
 winreg = "0.52"
@@ -53,8 +53,8 @@ winreg = "0.52"
 tar = "0.4"
 flate2 = "1"
 
-# El instalador se distribuye como UN ejecutable y la gente lo baja por
-# internet: cada MB cuenta y no hay build incremental que optimizar.
+# The installer ships as ONE executable that people download over the internet:
+# every MB counts and there is no incremental build to optimise for.
 [profile.release]
 opt-level = "z"
 lto = true

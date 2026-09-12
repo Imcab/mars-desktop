@@ -1,14 +1,16 @@
-// Contrato entre la app y el bloque de funciones que dependen del framework
-// MARS. Vive aparte de las dos implementaciones (`index.tsx` y
-// `index.tools.tsx`) porque los TIPOS sí son comunes a las dos ediciones: lo
-// que cambia es qué se importa, no qué forma tiene.
+// The contract between the app and the block of features that depend on the
+// MARS framework.
 //
-// Ver `src/mars/README.md` para por qué existe esta división.
+// It lives apart from the two implementations (`index.tsx` and
+// `index.tools.tsx`) because the TYPES are common to both editions: what
+// changes is what gets imported, not what shape it has.
+//
+// See `src/mars/README.md` for why this split exists.
 
 import type { ReactNode } from "react"
 import type { ConnectionState, LogSource, Page, TopicAnnounce } from "../store/appStore"
 
-/** Páginas que solo existen si el framework MARS está presente. */
+/** Pages that only exist when the MARS framework is present. */
 export type MarsPage =
   | "creator"
   | "packages"
@@ -19,7 +21,7 @@ export type MarsPage =
   | "subsystems"
   | "watchdog"
 
-/** Todo lo que necesita cualquiera de las páginas MARS para pintarse. */
+/** Everything any of the MARS pages needs in order to render. */
 export interface MarsPageContext {
   projectName: string | null
   projectPath: string | null
@@ -28,34 +30,33 @@ export interface MarsPageContext {
   logSource: LogSource | null
 }
 
-/** Una entrada de menú/sidebar aportada por la edición completa. */
+/** One sidebar/menu entry contributed by the complete edition. */
 export interface MarsNavItem {
-  /** Archivo en public/icons. */
+  /** File in public/icons. */
   svg: string
-  /** Respaldo tabler mientras el SVG no exista. */
+  /** Tabler fallback while the SVG does not exist. */
   icon: string
   label: string
   page: Page
-  /** Descripción para la lista de la pantalla de inicio. */
+  /** Description for the welcome screen's list. */
   desc: string
 }
 
 /**
- * Superficie que cada edición implementa. La de tools devuelve listas vacías y
- * `null`; el bundler se lleva por delante todo lo que solo se alcanzaba desde
- * aquí.
+ * The surface each edition implements. The Tools one returns empty lists and
+ * `null`; the bundler then drops everything that was only reachable from here.
  */
 export interface MarsSurface {
-  /** `false` en la edición Tools. Es una constante de módulo, no un flag de runtime. */
+  /** `false` in the Tools edition. It is a module constant, not a runtime flag. */
   MARS_ENABLED: boolean
-  /** Grupo "Project" del sidebar y el menú File. */
+  /** The sidebar's "Project" group and the File menu. */
   PROJECT_ITEMS: readonly MarsNavItem[]
-  /** Grupo "Modules" (tablas que leen del proyecto MARS). */
+  /** The "Modules" group (tables that read from the MARS project). */
   MODULE_ITEMS: readonly MarsNavItem[]
-  /** Entradas MARS del grupo "Config" (estado de subsistemas, watchdog). */
+  /** The MARS entries of the "Config" group (subsystem status, watchdog). */
   CONFIG_ITEMS: readonly MarsNavItem[]
-  /** `true` si esta edición sabe lanzar MARS Simulation Studio. */
+  /** `true` if this edition knows how to launch MARS Simulation Studio. */
   HAS_SIM_STUDIO: boolean
-  /** Devuelve la página si es una página MARS; `null` si no le toca. */
+  /** Returns the page if it is a MARS page; `null` if it is not its turn. */
   renderMarsPage: (page: Page, ctx: MarsPageContext) => ReactNode | null
 }

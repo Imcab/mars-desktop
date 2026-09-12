@@ -1,13 +1,13 @@
-// Qué edición es esta compilación.
+// Which edition this build is.
 //
-// No hay un flag suelto: se deduce del módulo `@mars`, que es el que realmente
-// cambia entre ediciones (ver src/mars/README.md). Así no hay dos fuentes de
-// verdad que puedan contradecirse — si el bundle no trae MARS, `MARS_ENABLED`
-// es `false` y punto.
+// There is no loose flag: it is derived from the `@mars` module, which is what
+// actually changes between editions (see src/mars/README.md). That way there
+// are not two sources of truth that could contradict each other — if the bundle
+// has no MARS in it, `MARS_ENABLED` is `false` and that is that.
 
 import { MARS_ENABLED } from "@mars"
 
 export const MARS_EDITION: "full" | "tools" = MARS_ENABLED ? "full" : "tools"
 
-/** Nombre del producto tal como se le muestra al usuario. */
+/** The product name as shown to the user. */
 export const MARS_PRODUCT_NAME = MARS_ENABLED ? "MARS Desktop" : "MARS Desktop Tools"

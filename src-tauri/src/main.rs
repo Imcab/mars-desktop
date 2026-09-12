@@ -3,13 +3,13 @@
 mod assets3d;
 mod nt4;
 
-// --- Ediciones -------------------------------------------------------------
+// --- Editions --------------------------------------------------------------
 //
-// Todo lo que necesita el framework MARS vive detras de la feature `mars`,
-// activa por defecto. La edicion Tools se compila con `--no-default-features`
-// y estos modulos, sus comandos y sus dependencias no entran al binario: no es
-// un boton escondido, es codigo que no se compila. El front hace lo mismo con
-// el alias `@mars` (ver src/mars/README.md).
+// Everything the MARS framework needs lives behind the `mars` feature, which is
+// on by default. The Tools edition is compiled with `--no-default-features` and
+// these modules, their commands and their dependencies never reach the binary:
+// it is not a hidden button, it is code that is not compiled. The front end
+// does the same through the `@mars` alias (see src/mars/README.md).
 #[cfg(feature = "mars")]
 mod feature_gen;
 #[cfg(feature = "mars")]
@@ -24,8 +24,8 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
-// Solo los usan los comandos del framework (clonar la plantilla, leer el
-// Manifest.java, correr gradle). Sin la feature `mars` no hay quien los use.
+// Only the framework's commands use these (cloning the template, reading
+// Manifest.java, running gradle). Without the `mars` feature nothing does.
 #[cfg(feature = "mars")]
 use std::collections::HashMap;
 #[cfg(feature = "mars")]
@@ -454,13 +454,13 @@ async fn install_package_from_json(project_path: String, feature_data: String) -
 
 }
 
-/// Registra el handler de comandos con la lista base mas los que le pasen.
+/// Registers the command handler with the base list plus whatever is passed in.
 ///
-/// `tauri::generate_handler!` no acepta atributos por linea, y un builder solo
-/// admite UN `invoke_handler` (el segundo reemplaza al primero, sin avisar).
-/// Por eso la lista base vive en una macro y cada edicion la invoca una vez
-/// con sus comandos extra, en lugar de duplicar cuarenta nombres.
-macro_rules! registrar_comandos {
+/// `tauri::generate_handler!` takes no per-line attributes, and a builder only
+/// accepts ONE `invoke_handler` (the second silently replaces the first). So the
+/// base list lives in a macro and each edition calls it once with its own extra
+/// commands, rather than duplicating forty names.
+macro_rules! register_commands {
     ($builder:expr $(, $extra:path)* $(,)?) => {
         $builder.invoke_handler(tauri::generate_handler![
             read_mars_settings,
@@ -506,7 +506,7 @@ fn main() {
         .manage(nt4_state);
 
     #[cfg(feature = "mars")]
-    let builder = registrar_comandos!(
+    let builder = register_commands!(
         builder,
         create_mars_project,
         validate_mars_project,
@@ -526,7 +526,7 @@ fn main() {
     );
 
     #[cfg(not(feature = "mars"))]
-    let builder = registrar_comandos!(builder);
+    let builder = register_commands!(builder);
 
     builder
         .run(tauri::generate_context!())

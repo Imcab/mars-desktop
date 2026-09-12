@@ -63,7 +63,8 @@ export default function Sidebar({
   // que ademas explica como compilarlo.
   const [simDisponible, setSimDisponible] = useState<boolean | null>(null)
   useEffect(() => {
-    // En la edicion Tools el comando no existe en el binario: ni se pregunta.
+    // In the Tools edition the command does not exist in the binary: do not
+    // even ask.
     if (!HAS_SIM_STUDIO) return
     invoke<string | null>("sim_app_disponible")
       .then(ruta => setSimDisponible(ruta !== null))
@@ -108,8 +109,8 @@ export default function Sidebar({
           onClick={() => navigate("welcome")}
         />
 
-        {/* Un proyecto es un proyecto de MARS: el grupo entero desaparece en la
-            edicion Tools, igual que su codigo. */}
+        {/* A project is a MARS project: the whole group disappears in the Tools
+            edition, just like its code. */}
         {MARS_ENABLED && (
           <TreeGroup title="Project" icon="ti-folder" collapsed={collapsed}>
             {PROJECT_ITEMS.map(item => (
@@ -122,8 +123,8 @@ export default function Sidebar({
                   selected={activeTabId === null && currentPage === item.page}
                   onClick={() => navigate(item.page)}
                 />
-                {/* "Open Project" es una accion, no una pagina, asi que no esta
-                    en la lista; va detras de "New Project" como siempre. */}
+                {/* "Open Project" is an action, not a page, so it is not in the
+                    list; it goes after "New Project" as it always did. */}
                 {item.page === "creator" && (
                   <TreeLeaf svg="open-folder.svg" icon="ti-folder-open" label="Open Project" collapsed={collapsed} onClick={onOpenProject} />
                 )}

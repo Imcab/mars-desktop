@@ -1,414 +1,420 @@
-// MARS Installer — el asistente.
+// MARS Installer — the wizard.
 //
-// Un objeto `estado` y una función por pantalla. Cada pantalla se dibuja
-// entera cuando se entra en ella (`pintar*`) y configura sus propios botones
-// del pie: así no hay ningún lugar donde el botón "Siguiente" tenga que
-// adivinar en qué paso está.
+// One `state` object and one function per screen. Each screen draws itself
+// whole when entered (`paint*`) and sets up its own footer buttons: that way
+// there is nowhere for the "Next" button to have to guess which step it is on.
 
-import { invoke, escuchar, elegirCarpeta, cerrar } from "./tauri.js"
-import { $, el, caja, resumen, mostrarPaso, pie, bitacora, progreso, mb, fecha } from "./ui.js"
+import { invoke, listen, pickFolder, close } from "./tauri.js"
+import { $, el, notice, summary, showStep, footer, log, progress, mb, date } from "./ui.js"
 
-const NOMBRES_SO = { windows: "Windows", linux: "Linux", macos: "macOS" }
+const OS_NAMES = { windows: "Windows", linux: "Linux", macos: "macOS" }
 
-const estado = {
-  /** Lo que devolvió `estado_instalacion`. */
-  sistema: null,
+const state = {
+  /** Whatever `install_status` returned. */
+  system: null,
   /** "full" | "tools" */
-  edicion: "full",
-  carpeta: "",
-  accesoEscritorio: true,
-  /** El plan de descarga de la release consultada. */
+  edition: "full",
+  dir: "",
+  desktopShortcut: true,
+  /** The download plan for the release we checked. */
   plan: null,
-  /** Resultado de la instalación. */
-  registro: null,
+  /** Result of the installation. */
+  record: null,
 }
 
-// --- Arranque ---------------------------------------------------------------
+// --- Startup ----------------------------------------------------------------
 
-async function arrancar() {
+async function start() {
   try {
-    estado.sistema = await invoke("estado_instalacion")
+    state.system = await invoke("install_status")
   } catch (e) {
-    mostrarPaso("inicio")
-    $("inicio-titulo").textContent = "No pude leer el estado del sistema"
-    caja($("inicio-avisos"), "error", String(e))
-    pie({ cancelar: { texto: "Cerrar", al: cerrar } })
+    showStep("start")
+    $("start-title").textContent = "I could not read the state of this system"
+    notice($("start-notices"), "error", String(e))
+    footer({ cancel: { text: "Close", on: close } })
     return
   }
 
-  estado.carpeta = estado.sistema.destino_sugerido
-  $("marca-sub").textContent =
-    `INSTALADOR v${estado.sistema.version_instalador} · ${NOMBRES_SO[estado.sistema.so] ?? estado.sistema.so} ${estado.sistema.arch}`
+  state.dir = state.system.suggested_dir
+  $("brand-sub").textContent =
+    `INSTALLER v${state.system.installer_version} · ${OS_NAMES[state.system.os] ?? state.system.os} ${state.system.arch}`
 
-  // Windows llama al desinstalador con --uninstall desde la lista de
-  // aplicaciones instaladas: ahí se entra directo a esa pantalla.
-  const modo = await invoke("modo_inicial").catch(() => "instalar")
-  if (modo === "desinstalar" && estado.sistema.instalado) {
-    pintarDesinstalar()
+  // Windows calls the uninstaller with --uninstall from the installed apps
+  // list: that goes straight to this screen.
+  const mode = await invoke("initial_mode").catch(() => "install")
+  if (mode === "uninstall" && state.system.installed) {
+    paintUninstall()
   } else {
-    pintarInicio()
+    paintStart()
   }
 
-  escuchar("instalador://progreso", ({ payload }) => aplicarProgreso(payload))
+  listen("installer://progress", ({ payload }) => applyProgress(payload))
 }
 
-// --- 1. Inicio --------------------------------------------------------------
+// --- 1. Start ---------------------------------------------------------------
 
-function pintarInicio() {
-  mostrarPaso("inicio")
-  const inst = estado.sistema.instalado
+function paintStart() {
+  showStep("start")
+  const inst = state.system.installed
 
   if (!inst) {
-    $("inicio-titulo").textContent = "Instalar MARS Desktop"
-    $("inicio-lede").textContent =
-      "Este asistente descarga MARS desde su repositorio oficial y lo deja listo para usar. " +
-      "No hace falta ser administrador: todo se instala en tu usuario."
-    resumen($("inicio-resumen"), [
-      ["Sistema", `${NOMBRES_SO[estado.sistema.so] ?? estado.sistema.so} · ${estado.sistema.arch}`],
-      ["Origen", `github.com/${estado.sistema.repo}`],
-      ["Se instalará en", estado.sistema.destino_sugerido],
+    $("start-title").textContent = "Install MARS Desktop"
+    $("start-lede").textContent =
+      "This wizard downloads MARS from its official repository and leaves it ready to use. " +
+      "No administrator rights needed: everything is installed under your user."
+    summary($("start-summary"), [
+      ["System", `${OS_NAMES[state.system.os] ?? state.system.os} · ${state.system.arch}`],
+      ["Source", `github.com/${state.system.repo}`],
+      ["Will be installed in", state.system.suggested_dir],
     ])
-    caja(
-      $("inicio-avisos"),
-      "aviso",
-      estado.sistema.falta_webview2
-        ? "Falta el runtime WebView2 de Microsoft, que es lo que dibuja la ventana de la app. " +
-          "El instalador lo va a instalar primero (descarga chica, sin reiniciar)."
+    notice(
+      $("start-notices"),
+      "warn",
+      state.system.needs_webview2
+        ? "Microsoft's WebView2 runtime is missing — that is what draws the app's window. " +
+          "The installer will install it first (a small download, no reboot)."
         : "",
     )
-    pie({
-      cancelar: { texto: "Cancelar", al: cerrar },
-      siguiente: { texto: "Empezar", al: () => pintarEdicion() },
+    footer({
+      cancel: { text: "Cancel", on: close },
+      next: { text: "Get started", on: () => paintEdition() },
     })
     return
   }
 
-  // Ya hay algo instalado: la pantalla cambia de "instalar" a "administrar".
-  estado.edicion = inst.edicion
-  $("inicio-titulo").textContent = `MARS ${inst.version} está instalado`
-  $("inicio-lede").textContent =
-    "Podés actualizarlo, reinstalarlo con otra edición o quitarlo de esta computadora."
-  resumen($("inicio-resumen"), [
-    ["Edición", inst.edicion === "tools" ? "Solo herramientas" : "MARS completo"],
-    ["Versión", inst.version],
-    ["Carpeta", inst.carpeta],
-    ["Componentes", inst.componentes.map(nombreComponente).join(", ")],
-    ["Instalado el", fecha(inst.instalado_en)],
+  // Something is installed already: the screen switches from "install" to
+  // "manage".
+  state.edition = inst.edition
+  $("start-title").textContent = `MARS ${inst.version} is installed`
+  $("start-lede").textContent =
+    "You can update it, reinstall it with a different edition, or remove it from this computer."
+  summary($("start-summary"), [
+    ["Edition", inst.edition === "tools" ? "Tools only" : "Complete MARS"],
+    ["Version", inst.version],
+    ["Folder", inst.dir],
+    ["Components", inst.components.map(componentName).join(", ")],
+    ["Installed on", date(inst.installed_at)],
   ])
-  $("inicio-avisos").replaceChildren()
+  $("start-notices").replaceChildren()
 
-  pie({
-    cancelar: { texto: "Cerrar", al: cerrar },
-    desinstalar: { texto: "Desinstalar", al: () => pintarDesinstalar() },
-    siguiente: { texto: "Actualizar o cambiar", al: () => pintarEdicion() },
+  footer({
+    cancel: { text: "Close", on: close },
+    uninstall: { text: "Uninstall", on: () => paintUninstall() },
+    next: { text: "Update or change", on: () => paintEdition() },
   })
 
-  // La comprobación de versión va después de pintar: si GitHub no contesta, la
-  // pantalla ya está completa y solo falta una línea.
-  buscarActualizacion(inst)
+  // The version check runs after painting: if GitHub does not answer, the
+  // screen is already complete and only one line is missing.
+  checkForUpdates(inst)
 }
 
-async function buscarActualizacion(inst) {
-  const aviso = $("inicio-avisos")
-  aviso.replaceChildren()
-  const linea = el("div", "lede")
-  linea.append(el("span", "girando"), document.createTextNode("Buscando actualizaciones…"))
-  aviso.appendChild(linea)
+async function checkForUpdates(inst) {
+  const box = $("start-notices")
+  box.replaceChildren()
+  const line = el("div", "lede")
+  line.append(el("span", "spinner"), document.createTextNode("Checking for updates…"))
+  box.appendChild(line)
 
   try {
-    const plan = await invoke("consultar_release", { edicion: inst.edicion })
-    estado.plan = plan
-    if (plan.mas_nueva) {
-      caja(aviso, "ok", `Hay una versión nueva: ${plan.release.version} (tenés la ${inst.version}).`)
+    const plan = await invoke("check_release", { edition: inst.edition })
+    state.plan = plan
+    if (plan.is_newer) {
+      notice(box, "ok", `A newer version is available: ${plan.release.version} (you have ${inst.version}).`)
     } else if (plan.release.version === inst.version) {
-      caja(aviso, "ok", `Tenés la última versión publicada (${plan.release.version}).`)
+      notice(box, "ok", `You have the latest published version (${plan.release.version}).`)
     } else {
-      // Pasa con una compilación local más nueva que lo publicado. Decir
-      // "estás al día" ahí sería mentira, y ofrecer "actualizar" a una versión
-      // anterior, peor.
-      caja(aviso, "aviso", `Tenés la ${inst.version}, más nueva que la última publicada (${plan.release.version}).`)
+      // This happens with a local build newer than what is published. Saying
+      // "you are up to date" there would be a lie, and offering to "update" to
+      // an older version would be worse.
+      notice(box, "warn", `You have ${inst.version}, newer than the latest published version (${plan.release.version}).`)
     }
   } catch (e) {
-    caja(aviso, "aviso", `No pude consultar si hay actualizaciones:\n${e}`)
+    notice(box, "warn", `I could not check for updates:\n${e}`)
   }
 }
 
-// --- 2. Edición -------------------------------------------------------------
+// --- 2. Edition -------------------------------------------------------------
 
-function pintarEdicion() {
-  mostrarPaso("edicion")
+function paintEdition() {
+  showStep("edition")
 
-  const hayStudio = estado.sistema.hay_simulation_studio
-  $("ed-full-lista").replaceChildren(
+  const hasStudio = state.system.has_simulation_studio
+  $("ed-full-list").replaceChildren(
     ...[
-      "Dashboard completo: NetworkTables, campo 2D y 3D, swerve, mecanismos, gráficas, SysId, logs .wpilog",
-      "Framework MARS: proyectos, paquetes, manifiesto, wizard de subsistemas, features",
-      hayStudio
-        ? "MARS Simulation Studio (simulador con física)"
-        : `MARS Simulation Studio — todavía no está disponible en ${NOMBRES_SO[estado.sistema.so] ?? estado.sistema.so}`,
-    ].map((t, i) => el("li", i === 2 && !hayStudio ? "no" : null, t)),
+      "Full dashboard: NetworkTables, 2D and 3D field, swerve, mechanisms, plots, SysId, .wpilog files",
+      "MARS framework: projects, packages, manifest, subsystem wizard, features",
+      hasStudio
+        ? "MARS Simulation Studio (physics simulator)"
+        : `MARS Simulation Studio — not available on ${OS_NAMES[state.system.os] ?? state.system.os} yet`,
+    ].map((t, i) => el("li", i === 2 && !hasStudio ? "no" : null, t)),
   )
-  $("ed-tools-lista").replaceChildren(
+  $("ed-tools-list").replaceChildren(
     ...[
-      "Dashboard completo: NetworkTables, campo 2D y 3D, swerve, mecanismos, gráficas, SysId, logs .wpilog",
-      "Sin framework MARS: no se compila ni se instala nada de proyectos, paquetes ni subsistemas",
-      "Sin simulador",
+      "Full dashboard: NetworkTables, 2D and 3D field, swerve, mechanisms, plots, SysId, .wpilog files",
+      "No MARS framework: nothing about projects, packages or subsystems is compiled or installed",
+      "No simulator",
     ].map((t, i) => el("li", i > 0 ? "no" : null, t)),
   )
 
-  const marcar = () => {
-    $("ed-full").classList.toggle("elegida", estado.edicion === "full")
-    $("ed-tools").classList.toggle("elegida", estado.edicion === "tools")
+  const mark = () => {
+    $("ed-full").classList.toggle("chosen", state.edition === "full")
+    $("ed-tools").classList.toggle("chosen", state.edition === "tools")
   }
   for (const id of ["ed-full", "ed-tools"]) {
     $(id).onclick = () => {
-      estado.edicion = $(id).dataset.edicion
-      marcar()
+      state.edition = $(id).dataset.edition
+      mark()
     }
   }
-  marcar()
+  mark()
 
-  $("ruta").value = estado.carpeta
-  $("ruta").oninput = (e) => { estado.carpeta = e.target.value }
-  $("btn-examinar").onclick = async () => {
-    const elegida = await elegirCarpeta(estado.carpeta)
-    if (elegida) {
-      estado.carpeta = elegida
-      $("ruta").value = elegida
+  $("path").value = state.dir
+  $("path").oninput = (e) => { state.dir = e.target.value }
+  $("btn-browse").onclick = async () => {
+    const chosen = await pickFolder(state.dir)
+    if (chosen) {
+      state.dir = chosen
+      $("path").value = chosen
     }
   }
-  $("chk-escritorio").checked = estado.accesoEscritorio
-  $("chk-escritorio").onchange = (e) => { estado.accesoEscritorio = e.target.checked }
+  $("chk-desktop").checked = state.desktopShortcut
+  $("chk-desktop").onchange = (e) => { state.desktopShortcut = e.target.checked }
 
-  caja(
-    $("edicion-avisos"),
-    "aviso",
-    estado.sistema.instalado && estado.sistema.instalado.edicion !== estado.edicion
-      ? "Vas a cambiar de edición: se quita la instalación actual y se instala la nueva. Tus preferencias y layouts se conservan."
+  notice(
+    $("edition-notices"),
+    "warn",
+    state.system.installed && state.system.installed.edition !== state.edition
+      ? "You are switching editions: the current installation is removed and the new one installed. Your preferences and layouts are kept."
       : "",
   )
 
-  pie({
-    atras: { texto: "Atrás", al: () => pintarInicio() },
-    cancelar: { texto: "Cancelar", al: cerrar },
-    siguiente: { texto: "Siguiente", al: () => pintarConfirmar() },
+  footer({
+    back: { text: "Back", on: () => paintStart() },
+    cancel: { text: "Cancel", on: close },
+    next: { text: "Next", on: () => paintConfirm() },
   })
 }
 
-// --- 3. Confirmación --------------------------------------------------------
+// --- 3. Confirmation --------------------------------------------------------
 
-async function pintarConfirmar() {
-  if (!estado.carpeta.trim()) {
-    caja($("edicion-avisos"), "error", "Hace falta una carpeta de instalación.")
+async function paintConfirm() {
+  if (!state.dir.trim()) {
+    notice($("edition-notices"), "error", "An install folder is required.")
     return
   }
 
-  mostrarPaso("confirmar")
-  $("confirmar-lede").textContent = "Consultando la última versión publicada…"
-  $("confirmar-resumen").replaceChildren()
-  $("confirmar-notas").replaceChildren()
-  $("confirmar-avisos").replaceChildren()
-  pie({
-    atras: { texto: "Atrás", al: () => pintarEdicion() },
-    cancelar: { texto: "Cancelar", al: cerrar },
-    siguiente: { texto: "Instalar", deshabilitado: true },
+  showStep("confirm")
+  $("confirm-lede").textContent = "Checking the latest published version…"
+  $("confirm-summary").replaceChildren()
+  $("confirm-notes").replaceChildren()
+  $("confirm-notices").replaceChildren()
+  footer({
+    back: { text: "Back", on: () => paintEdition() },
+    cancel: { text: "Cancel", on: close },
+    next: { text: "Install", disabled: true },
   })
 
   let plan
   try {
-    plan = await invoke("consultar_release", { edicion: estado.edicion })
+    plan = await invoke("check_release", { edition: state.edition })
   } catch (e) {
-    $("confirmar-lede").textContent = "No pude preparar la instalación."
-    caja($("confirmar-avisos"), "error", String(e))
-    pie({
-      atras: { texto: "Atrás", al: () => pintarEdicion() },
-      cancelar: { texto: "Cerrar", al: cerrar },
-      siguiente: { texto: "Reintentar", al: () => pintarConfirmar() },
+    $("confirm-lede").textContent = "I could not prepare the installation."
+    notice($("confirm-notices"), "error", String(e))
+    footer({
+      back: { text: "Back", on: () => paintEdition() },
+      cancel: { text: "Close", on: close },
+      next: { text: "Try again", on: () => paintConfirm() },
     })
     return
   }
 
-  estado.plan = plan
-  const total = plan.artefactos.reduce((s, a) => s + (a.tamano || 0), 0)
+  state.plan = plan
+  const total = plan.artifacts.reduce((s, a) => s + (a.size || 0), 0)
 
-  $("confirmar-lede").textContent = "Revisá que esté todo bien antes de empezar."
-  resumen($("confirmar-resumen"), [
-    ["Edición", estado.edicion === "tools" ? "Solo herramientas" : "MARS completo"],
-    ["Versión", `${plan.release.version} (${plan.release.etiqueta})`],
-    ["Componentes", plan.artefactos.map((a) => nombreComponente(a.componente)).join(", ")],
-    ["Descarga", mb(total) ?? "tamaño no informado"],
-    ["Carpeta", estado.carpeta],
-    ["Acceso en el escritorio", estado.accesoEscritorio ? "Sí" : "No"],
-    ["Integridad", plan.release.verificable ? "sha256 publicado — se verifica" : "la release no publica checksums"],
+  $("confirm-lede").textContent = "Check everything looks right before starting."
+  summary($("confirm-summary"), [
+    ["Edition", state.edition === "tools" ? "Tools only" : "Complete MARS"],
+    ["Version", `${plan.release.version} (${plan.release.tag})`],
+    ["Components", plan.artifacts.map((a) => componentName(a.component)).join(", ")],
+    ["Download", mb(total) ?? "size not reported"],
+    ["Folder", state.dir],
+    ["Desktop shortcut", state.desktopShortcut ? "Yes" : "No"],
+    ["Integrity", plan.release.verified ? "sha256 published — will be verified" : "the release publishes no checksums"],
   ])
 
-  if (plan.release.notas.trim()) {
-    const encabezado = el("div", "lede", "Novedades de esta versión — ")
-    const verMas = el("span", "enlace", "ver la release completa")
-    verMas.onclick = () => invoke("abrir_url", { url: plan.release.url_release }).catch(() => {})
-    encabezado.appendChild(verMas)
-    $("confirmar-notas").replaceChildren(encabezado, el("div", "notas", plan.release.notas))
+  if (plan.release.notes.trim()) {
+    const heading = el("div", "lede", "What is new in this version — ")
+    const seeMore = el("span", "link", "see the full release")
+    seeMore.onclick = () => invoke("open_url", { url: plan.release.url }).catch(() => {})
+    heading.appendChild(seeMore)
+    $("confirm-notes").replaceChildren(heading, el("div", "notes", plan.release.notes))
   }
 
-  const avisos = []
-  if (plan.faltantes.length) {
-    avisos.push(`La release no publica para esta plataforma: ${plan.faltantes.join(", ")}. Se instala el resto.`)
+  const notices = []
+  if (plan.missing.length) {
+    notices.push(`The release does not publish these for this platform: ${plan.missing.join(", ")}. The rest will be installed.`)
   }
-  if (!plan.release.verificable) {
-    avisos.push("Esta release no trae checksums, así que no puedo verificar lo que se descargue.")
+  if (!plan.release.verified) {
+    notices.push("This release carries no checksums, so I cannot verify what gets downloaded.")
   }
-  caja($("confirmar-avisos"), "aviso", avisos.join("\n\n"))
+  notice($("confirm-notices"), "warn", notices.join("\n\n"))
 
-  pie({
-    atras: { texto: "Atrás", al: () => pintarEdicion() },
-    cancelar: { texto: "Cancelar", al: cerrar },
-    siguiente: { texto: "Instalar", al: () => correrInstalacion() },
+  footer({
+    back: { text: "Back", on: () => paintEdition() },
+    cancel: { text: "Cancel", on: close },
+    next: { text: "Install", on: () => runInstall() },
   })
 }
 
-// --- 4. Progreso ------------------------------------------------------------
+// --- 4. Progress ------------------------------------------------------------
 
-async function correrInstalacion() {
-  mostrarPaso("progreso")
-  $("progreso-titulo").textContent = "Instalando MARS"
-  $("bitacora").replaceChildren()
-  progreso(0, "Preparando…")
-  // Durante la instalación no hay botones: cancelar a mitad de una extracción
-  // deja archivos a medias, y "cerrar la ventana" ya es la salida de emergencia.
-  pie({})
+async function runInstall() {
+  showStep("progress")
+  $("progress-title").textContent = "Installing MARS"
+  $("log").replaceChildren()
+  progress(0, "Getting ready…")
+  // No buttons while installing: cancelling halfway through an extraction
+  // leaves half-written files, and "close the window" is already the emergency
+  // exit.
+  footer({})
 
   try {
-    estado.registro = await invoke("instalar", {
-      opciones: {
-        edicion: estado.edicion,
-        carpeta: estado.carpeta,
-        acceso_escritorio: estado.accesoEscritorio,
+    state.record = await invoke("install", {
+      options: {
+        edition: state.edition,
+        dir: state.dir,
+        desktop_shortcut: state.desktopShortcut,
       },
     })
-    pintarFinal()
+    paintDone()
   } catch (e) {
-    progreso(100, "La instalación falló")
-    bitacora(String(e), "error")
-    $("progreso-titulo").textContent = "No se pudo instalar"
-    pie({
-      cancelar: { texto: "Cerrar", al: cerrar },
-      siguiente: { texto: "Reintentar", al: () => correrInstalacion() },
+    progress(100, "The installation failed")
+    log(String(e), "error")
+    $("progress-title").textContent = "Could not install"
+    footer({
+      cancel: { text: "Close", on: close },
+      next: { text: "Try again", on: () => runInstall() },
     })
   }
 }
 
-function aplicarProgreso(p) {
-  progreso(p.porcentaje, p.mensaje)
-  if (p.fase === "aviso") bitacora(`aviso: ${p.mensaje}`, "aviso")
-  else if (p.fase === "listo") bitacora(p.mensaje, "ok")
-  else if (p.fase !== "descargar") bitacora(p.mensaje)
-  // La fase "descargar" emite muchas veces por segundo: va en la línea de
-  // estado y en la barra, no en la bitácora.
+function applyProgress(p) {
+  progress(p.percent, p.message)
+  if (p.phase === "warning") log(`warning: ${p.message}`, "warn")
+  else if (p.phase === "done") log(p.message, "ok")
+  else if (p.phase !== "download") log(p.message)
+  // The "download" phase fires many times a second: it belongs on the status
+  // line and the bar, not in the log.
 }
 
-// --- 5. Final ---------------------------------------------------------------
+// --- 5. Done ----------------------------------------------------------------
 
-function pintarFinal() {
-  mostrarPaso("final")
-  const reg = estado.registro
-  $("final-titulo").textContent = `MARS ${reg.version} quedó instalado`
-  $("final-lede").textContent =
-    reg.atajos.length > 0
-      ? "Ya está en el menú de aplicaciones. También podés abrirlo desde acá."
-      : "Está instalado. No pude crear accesos directos, así que se abre desde su carpeta."
+function paintDone() {
+  showStep("done")
+  const r = state.record
+  $("done-title").textContent = `MARS ${r.version} is installed`
+  $("done-lede").textContent =
+    r.shortcuts.length > 0
+      ? "It is in your applications menu now. You can also open it from here."
+      : "It is installed. I could not create shortcuts, so it opens from its folder."
 
-  resumen($("final-resumen"), [
-    ["Edición", reg.edicion === "tools" ? "Solo herramientas" : "MARS completo"],
-    ["Componentes", reg.componentes.map(nombreComponente).join(", ")],
-    ["Carpeta", reg.carpeta],
-    ["Archivos instalados", reg.archivos.length],
+  summary($("done-summary"), [
+    ["Edition", r.edition === "tools" ? "Tools only" : "Complete MARS"],
+    ["Components", r.components.map(componentName).join(", ")],
+    ["Folder", r.dir],
+    ["Files installed", r.files.length],
   ])
 
-  const nota = el("div", "lede")
-  nota.style.marginTop = "14px"
-  const verCarpeta = el("span", "enlace", "Abrir la carpeta")
-  verCarpeta.onclick = () => invoke("abrir_carpeta", { ruta: reg.carpeta }).catch((e) => caja($("final-avisos"), "error", String(e)))
-  nota.append(
-    verCarpeta,
-    document.createTextNode(". Para quitarlo más adelante, volvé a abrir este instalador"),
+  const note = el("div", "lede")
+  note.style.marginTop = "14px"
+  const openFolder = el("span", "link", "Open the folder")
+  openFolder.onclick = () =>
+    invoke("open_folder", { path: r.dir }).catch((e) => notice($("done-notices"), "error", String(e)))
+  note.append(
+    openFolder,
+    document.createTextNode(". To remove it later, run this installer again"),
     document.createTextNode(
-      estado.sistema.so === "windows"
-        ? " o usá Aplicaciones instaladas de Windows."
-        : ".",
+      state.system.os === "windows" ? " or use Installed apps in Windows." : ".",
     ),
   )
-  $("final-avisos").replaceChildren(nota)
+  $("done-notices").replaceChildren(note)
 
-  pie({
-    cancelar: { texto: "Cerrar", al: cerrar },
-    siguiente: { texto: "Abrir MARS Desktop", al: () => invoke("abrir_instalado", { componente: "mars-desktop" }).catch((e) => caja($("final-avisos"), "error", String(e))) },
+  footer({
+    cancel: { text: "Close", on: close },
+    next: {
+      text: "Open MARS Desktop",
+      on: () =>
+        invoke("launch_installed", { component: "mars-desktop" }).catch((e) =>
+          notice($("done-notices"), "error", String(e)),
+        ),
+    },
   })
 }
 
-// --- 6. Desinstalar ---------------------------------------------------------
+// --- 6. Uninstall -----------------------------------------------------------
 
-function pintarDesinstalar() {
-  mostrarPaso("desinstalar")
-  const inst = estado.sistema.instalado
+function paintUninstall() {
+  showStep("uninstall")
+  const inst = state.system.installed
   if (!inst) {
-    caja($("desinstalar-aviso"), "error", "No hay ninguna instalación registrada.")
-    pie({ cancelar: { texto: "Cerrar", al: cerrar } })
+    notice($("uninstall-notice"), "error", "No installation is registered.")
+    footer({ cancel: { text: "Close", on: close } })
     return
   }
 
-  resumen($("desinstalar-resumen"), [
-    ["Edición", inst.edicion === "tools" ? "Solo herramientas" : "MARS completo"],
-    ["Versión", inst.version],
-    ["Carpeta", inst.carpeta],
-    ["Se borrarán", `${inst.archivos.length} archivos y ${inst.atajos.length} accesos directos`],
+  summary($("uninstall-summary"), [
+    ["Edition", inst.edition === "tools" ? "Tools only" : "Complete MARS"],
+    ["Version", inst.version],
+    ["Folder", inst.dir],
+    ["Will be deleted", `${inst.files.length} files and ${inst.shortcuts.length} shortcuts`],
   ])
 
-  $("chk-datos").checked = false
-  const pintarAviso = () => {
-    $("desinstalar-aviso").textContent = $("chk-datos").checked
-      ? "Se van a borrar también tus preferencias, los layouts guardados y los packs de assets 3D descargados. Esto no se puede deshacer."
-      : "Tus preferencias, layouts y assets 3D se conservan por si volvés a instalar."
+  $("chk-data").checked = false
+  const paintNotice = () => {
+    $("uninstall-notice").textContent = $("chk-data").checked
+      ? "Your preferences, saved layouts and downloaded 3D asset packs will be deleted too. This cannot be undone."
+      : "Your preferences, layouts and 3D assets are kept in case you install again."
   }
-  $("chk-datos").onchange = pintarAviso
-  pintarAviso()
+  $("chk-data").onchange = paintNotice
+  paintNotice()
 
-  pie({
-    atras: { texto: "Atrás", al: () => pintarInicio() },
-    cancelar: { texto: "Cerrar", al: cerrar },
-    desinstalar: { texto: "Desinstalar ahora", al: () => correrDesinstalacion() },
+  footer({
+    back: { text: "Back", on: () => paintStart() },
+    cancel: { text: "Close", on: close },
+    uninstall: { text: "Uninstall now", on: () => runUninstall() },
   })
 }
 
-async function correrDesinstalacion() {
-  mostrarPaso("progreso")
-  $("progreso-titulo").textContent = "Desinstalando"
-  $("bitacora").replaceChildren()
-  progreso(30, "Quitando archivos y accesos directos…")
-  pie({})
+async function runUninstall() {
+  showStep("progress")
+  $("progress-title").textContent = "Uninstalling"
+  $("log").replaceChildren()
+  progress(30, "Removing files and shortcuts…")
+  footer({})
 
   try {
-    const mensaje = await invoke("desinstalar", { borrarDatos: $("chk-datos").checked })
-    progreso(100, "Listo")
-    mostrarPaso("final")
-    $("final-titulo").textContent = "MARS se desinstaló"
-    $("final-lede").textContent = mensaje
-    $("final-resumen").replaceChildren()
-    $("final-avisos").replaceChildren()
-    pie({ cancelar: { texto: "Cerrar", al: cerrar } })
+    const message = await invoke("uninstall", { deleteData: $("chk-data").checked })
+    progress(100, "Done")
+    showStep("done")
+    $("done-title").textContent = "MARS has been uninstalled"
+    $("done-lede").textContent = message
+    $("done-summary").replaceChildren()
+    $("done-notices").replaceChildren()
+    footer({ cancel: { text: "Close", on: close } })
   } catch (e) {
-    progreso(100, "No se pudo desinstalar")
-    bitacora(String(e), "error")
-    pie({
-      cancelar: { texto: "Cerrar", al: cerrar },
-      siguiente: { texto: "Reintentar", al: () => correrDesinstalacion() },
+    progress(100, "Could not uninstall")
+    log(String(e), "error")
+    footer({
+      cancel: { text: "Close", on: close },
+      next: { text: "Try again", on: () => runUninstall() },
     })
   }
 }
 
-// --- Auxiliares -------------------------------------------------------------
+// --- Helpers ----------------------------------------------------------------
 
-function nombreComponente(id) {
+function componentName(id) {
   return id === "mars-simulation-studio" ? "MARS Simulation Studio" : "MARS Desktop"
 }
 
-arrancar()
+start()

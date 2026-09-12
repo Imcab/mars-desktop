@@ -1,7 +1,7 @@
 [package]
 name = "mars-desktop"
 version = "1.1.3"
-description = "MARS Desktop - dashboard de NetworkTables para FRC"
+description = "MARS Desktop - a NetworkTables dashboard for FRC"
 authors = ["STZ Robotics"]
 edition = "2021"
 
@@ -14,26 +14,26 @@ edition = "2021"
 name = "mars_desktop_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
-# --- Ediciones -------------------------------------------------------------
+# --- Editions --------------------------------------------------------------
 #
-# `mars` (por defecto) trae el framework: generacion de subsistemas y features,
-# mapa de fuentes Java y el lanzador del Simulation Studio.
+# `mars` (on by default) brings the framework: subsystem and feature
+# generation, the Java source map, and the Simulation Studio launcher.
 #
-# La edicion Tools se construye con `--no-default-features` y no compila nada
-# de eso: es la app de NetworkTables sola. Ver src/mars/README.md.
+# The Tools edition is built with `--no-default-features` and compiles none of
+# it: it is the NetworkTables app on its own. See src/mars/README.md.
 [features]
 default = ["mars"]
 
-# OBLIGATORIA para una compilacion de produccion. `tauri::is_dev()` es
-# literalmente `!cfg!(feature = "custom-protocol")`: sin ella el binario
-# levanta la interfaz del devUrl (localhost:1420) en vez del bundle
-# empotrado, y lo unico que se ve al abrirlo es el error de conexion del
-# webview. La CLI de Tauri la activa sola al hacer `tauri build`; un
-# `cargo build --release` a secas NO, y ese es el camino que usa
-# scripts/package-release.mjs.
+# MANDATORY for a production build. `tauri::is_dev()` is literally
+# `!cfg!(feature = "custom-protocol")`: without it the binary loads the
+# interface from devUrl (localhost:1420) instead of the embedded bundle, and
+# all you see when opening it is the webview's connection error. Tauri's CLI
+# turns it on by itself during `tauri build`; a plain `cargo build --release`
+# does NOT, and that is the path scripts/package-release.mjs uses.
 custom-protocol = ["tauri/custom-protocol"]
-# `regex` solo lo usan el mapa de fuentes Java y la lectura del Manifest, que
-# son del framework: en la edicion Tools ni se baja ni se compila.
+# `regex` is only used by the Java source map and by reading the Manifest, both
+# of which belong to the framework: in the Tools edition it is neither
+# downloaded nor compiled.
 mars = ["dep:regex"]
 
 [build-dependencies]

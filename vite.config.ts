@@ -4,13 +4,14 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { MARS_VERSION_LABEL } from "./src/constants/version";
 
-// `__dirname` no existe en un config ESM, y este paquete es "type": "module".
+// `__dirname` does not exist in an ESM config, and this package is
+// "type": "module".
 const here = path.dirname(fileURLToPath(import.meta.url));
 
-// La pantalla de carga vive en index.html (se pinta antes de que el bundle se
-// evalúe), así que no puede importar la constante: se la inyectamos acá, al
-// construir. Así la versión sigue teniendo un solo lugar donde se escribe y el
-// splash no parpadea con el hueco vacío mientras carga el JS.
+// The loading screen lives in index.html (it is painted before the bundle is
+// even evaluated), so it cannot import the constant: we inject it here, at
+// build time. That way the version still has a single place where it is
+// written, and the splash does not flash an empty gap while the JS loads.
 const marsVersion = (edition: Edition): Plugin => ({
   name: "mars-version",
   transformIndexHtml: (html) =>
@@ -19,24 +20,24 @@ const marsVersion = (edition: Edition): Plugin => ({
       .join(edition === "tools" ? `${MARS_VERSION_LABEL} Tools` : MARS_VERSION_LABEL),
 });
 
-// --- Ediciones -------------------------------------------------------------
+// --- Editions --------------------------------------------------------------
 //
-// `full`  : la app entera, con el framework MARS (proyectos, paquetes,
-//           manifiesto, subsistemas, watchdog) y el lanzador del Simulation
-//           Studio.
-// `tools`  : solo dashboard sobre NetworkTables. El código de MARS no se
-//           esconde, NO SE COMPILA: el alias `@mars` apunta al stub, así que
-//           esas páginas no tienen ningún importador y rollup las deja fuera
-//           del bundle. El lado de Rust hace lo mismo con la feature `mars`
-//           de Cargo (ver src-tauri/Cargo.toml).
+// `full`  : the whole app, with the MARS framework (projects, packages,
+//           manifest, subsystems, watchdog) and the Simulation Studio
+//           launcher.
+// `tools` : just the NetworkTables dashboard. The MARS code is not hidden, it
+//           IS NOT COMPILED: the `@mars` alias points at the stub, so those
+//           pages have no importer at all and rollup leaves them out of the
+//           bundle. The Rust side does the same through cargo's `mars` feature
+//           (see src-tauri/Cargo.toml).
 //
-// Se elige con MARS_EDITION al construir; por defecto, `full`.
+// Chosen with MARS_EDITION at build time; defaults to `full`.
 type Edition = "full" | "tools";
 
 // @ts-expect-error process is a nodejs global
 const rawEdition: string = process.env.MARS_EDITION ?? "full";
 if (rawEdition !== "full" && rawEdition !== "tools") {
-  throw new Error(`MARS_EDITION inválida: "${rawEdition}". Usá "full" o "tools".`);
+  throw new Error(`Invalid MARS_EDITION: "${rawEdition}". Use "full" or "tools".`);
 }
 const edition = rawEdition as Edition;
 

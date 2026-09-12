@@ -1,19 +1,20 @@
-// Versión de MARS Desktop.
+// MARS Desktop's version.
 //
-// Fuente única: de acá sale la que muestra la pantalla de carga (vite la
-// inyecta en index.html al construir, ver el plugin `marsVersion` de
-// vite.config.ts) y la que use cualquier pantalla de "About" más adelante.
-// Si se toca, hay que tocar también package.json, src-tauri/Cargo.toml y
-// src-tauri/tauri.conf.json: esos tres los lee el instalador, no el bundle.
+// Single source: the loading screen's version comes from here (vite injects it
+// into index.html at build time, see the `marsVersion` plugin in
+// vite.config.ts), and so does whatever "About" screen comes later. If it
+// changes, package.json, src-tauri/Cargo.toml and src-tauri/tauri.conf.json
+// have to change too: the installer and the packager read those three, not the
+// bundle.
 //
-// `scripts/sync-version.mjs` verifica que los cuatro coincidan, y el workflow
-// de release lo corre antes de empaquetar: una versión desalineada rompe el
-// build en vez de llegar a una release publicada.
+// `scripts/sync-version.mjs` checks that all four agree, and the release
+// workflow runs it before packaging: a version that has drifted breaks the
+// build instead of reaching a published release.
 //
-// Este archivo lo importa vite.config.ts, que corre en Node: no puede depender
-// de nada del bundle. La edición compilada vive en `edition.ts`.
+// vite.config.ts imports this file and runs it in Node, so it cannot depend on
+// anything from the bundle. The compiled edition lives in `edition.ts`.
 
 export const MARS_VERSION = "1.1.3"
 
-/** Como se escribe en pantalla. */
+/** How it is written on screen. */
 export const MARS_VERSION_LABEL = `v${MARS_VERSION}`

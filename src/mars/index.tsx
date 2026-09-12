@@ -1,13 +1,13 @@
-// Edición COMPLETA: todo lo que depende del framework MARS.
+// The COMPLETE edition: everything that depends on the MARS framework.
 //
-// Este archivo es el único punto por el que el resto de la app alcanza a las
-// páginas de proyecto, paquetes, manifiesto y estado de subsistemas. El alias
-// `@mars` de vite.config.ts apunta acá en la edición Full y a
-// `index.tools.tsx` en la edición Tools; como ninguna otra parte del código
-// importa esas páginas, en Tools el bundler ni siquiera las incluye.
+// This file is the only point through which the rest of the app reaches the
+// project, packages, manifest and subsystem-status pages. The `@mars` alias in
+// vite.config.ts points here in the Full edition and at `index.tools.tsx` in
+// the Tools edition; since no other part of the code imports those pages, in
+// Tools the bundler does not even include them.
 //
-// Si agregás una página que lea del proyecto MARS o de un topic que publique
-// el framework, va acá — no en App.tsx.
+// If you add a page that reads from the MARS project or from a topic the
+// framework publishes, it goes here — not in App.tsx.
 
 import ProjectBuilderPage from "../pages/ProjectBuilderPage"
 import ProjectVariablesPage from "../pages/ProjectVariablesPage"
@@ -61,7 +61,7 @@ export function renderMarsPage(page: Page, ctx: MarsPageContext) {
   }
 }
 
-// Chequeo de tipos: si una edición se desvía del contrato, falla el build y no
-// en runtime con media interfaz muerta.
+// Type check: if an edition drifts from the contract the build fails, instead
+// of the running app with half its interface dead.
 const _surface: MarsSurface = { MARS_ENABLED, HAS_SIM_STUDIO, PROJECT_ITEMS, MODULE_ITEMS, CONFIG_ITEMS, renderMarsPage }
 void _surface

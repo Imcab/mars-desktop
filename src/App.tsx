@@ -23,9 +23,9 @@ import NTSessionPage from "./pages/NTSessionPage"
 import EquationsPage from "./pages/EquationsPage"
 import TimelineGlobal from "./components/layout/TimelineGlobal"
 
-// Todo lo que depende del framework MARS entra por acá. En la edición Tools el
-// alias `@mars` resuelve a un stub y ninguna de esas páginas llega al bundle
-// (ver src/mars/README.md).
+// Everything that depends on the MARS framework comes in through here. In the
+// Tools edition the `@mars` alias resolves to a stub and none of those pages
+// ever reach the bundle (see src/mars/README.md).
 import { MARS_ENABLED, renderMarsPage } from "@mars"
 import { MARS_PRODUCT_NAME } from "./constants/edition"
 
@@ -418,8 +418,9 @@ function App() {
     const boot = new SplashProgress()
     bootRef.current = boot
 
-    // tauri.conf.json no sabe de ediciones: el titulo correcto solo se conoce
-    // desde el bundle. En Full esto reescribe el mismo texto y no se nota.
+    // tauri.conf.json knows nothing about editions: the right title is only
+    // known from the bundle. In Full this rewrites the same text and nobody
+    // notices.
     void getCurrentWindow().setTitle(MARS_PRODUCT_NAME).catch(() => {})
 
     void (async () => {
@@ -429,7 +430,8 @@ function App() {
         s => s.team_number ? `team ${s.team_number}` : "no team number",
       )
 
-      // Sin framework MARS no hay proyecto: el paso ni se lista (ver splash.ts).
+      // With no MARS framework there is no project: the step is not even listed
+      // (see splash.ts).
       if (MARS_ENABLED) {
         const projectPath = settings?.workspace_path ?? ""
         if (projectPath) {
@@ -813,9 +815,9 @@ function App() {
     const activeTab = state.activeTabId ? state.openTabs.find(t => t.id === state.activeTabId) : undefined
     if (activeTab) return renderTab(activeTab)
 
-    // Las páginas del framework MARS se resuelven primero y viven en su propio
-    // módulo: en la edición Tools esto siempre devuelve null y cae al switch,
-    // que ya no tiene esos casos. Ninguna de las dos ediciones se entera.
+    // The MARS framework's pages are resolved first and live in their own
+    // module: in the Tools edition this always returns null and falls through
+    // to the switch, which no longer has those cases. Neither edition notices.
     const marsPage = renderMarsPage(state.currentPage, {
       projectName: state.projectName,
       projectPath: state.projectPath,

@@ -1,173 +1,174 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-//! MARS Installer — instala, actualiza y desinstala el ecosistema MARS.
+//! MARS Installer — installs, updates and uninstalls the MARS ecosystem.
 //!
-//! Es una aplicación de ventana, no un script: la instalación descarga decenas
-//! de megas, puede fallar por el proxy de la escuela y tiene una decisión real
-//! que tomar (Full o Tools). Una barra que avanza y un mensaje de error que se
-//! puede leer valen más que cualquier automatización silenciosa.
+//! It is a windowed application, not a script: installing downloads tens of
+//! megabytes, can fail on a school proxy, and has one real decision to make
+//! (Full or Tools). A bar that moves and an error message you can read are
+//! worth more than any silent automation.
 //!
-//! Cómo se reparte el trabajo:
+//! How the work is split:
 //!
-//! - `plataforma`  — qué cambia entre Windows, Linux y macOS.
-//! - `manifiesto`  — de dónde salen los archivos (releases de GitHub).
-//! - `descarga`    — bajarlos con progreso y verificar el sha256.
-//! - `paquete`     — abrir el .zip / .tar.gz.
-//! - `integracion` — accesos directos, lista de programas, WebView2.
-//! - `instalacion` — el orden de todo eso y el registro de lo que se hizo.
+//! - `platform`    — what differs between Windows, Linux and macOS.
+//! - `manifest`    — where the files come from (GitHub releases).
+//! - `download`    — fetching them with progress and verifying the sha256.
+//! - `archive`     — opening the .zip / .tar.gz.
+//! - `integration` — shortcuts, installed-programs entry, WebView2.
+//! - `install`     — the order of all that, and the record of what was done.
 //!
-//! Este archivo solo expone esos módulos como comandos y arranca la ventana.
+//! This file only exposes those modules as commands and starts the window.
 
-mod descarga;
-mod instalacion;
-mod integracion;
-mod manifiesto;
-mod paquete;
-mod plataforma;
+mod archive;
+mod download;
+mod install;
+mod integration;
+mod manifest;
+mod platform;
 
-use instalacion::{Estado, Opciones, Progreso, Registro};
+use install::{InstallRecord, Options, Progress, Status};
 use serde::Serialize;
 use tauri::{Emitter, Manager};
 
-/// Nombre del evento con el que la ventana sigue el progreso.
-const EVENTO_PROGRESO: &str = "instalador://progreso";
+/// Name of the event the window follows progress with.
+const PROGRESS_EVENT: &str = "installer://progress";
 
-/// Cómo se abrió el instalador.
+/// How the installer was opened.
 ///
-/// Windows llama al desinstalador con `--uninstall` desde "Aplicaciones
-/// instaladas". Es el mismo ejecutable: lo único que cambia es la pantalla con
-/// la que abre.
+/// Windows calls the uninstaller with `--uninstall` from "Installed apps". It
+/// is the same executable: the only thing that changes is the screen it opens
+/// on.
 #[derive(Clone, Copy, Serialize)]
 #[serde(rename_all = "lowercase")]
-enum Modo {
-    Instalar,
-    Desinstalar,
+enum Mode {
+    Install,
+    Uninstall,
 }
 
-struct Arranque(Modo);
+struct Startup(Mode);
 
 #[tauri::command]
-fn modo_inicial(estado: tauri::State<'_, Arranque>) -> Modo {
-    estado.0
+fn initial_mode(startup: tauri::State<'_, Startup>) -> Mode {
+    startup.0
 }
 
 #[tauri::command]
-fn estado_instalacion() -> Estado {
-    instalacion::estado()
+fn install_status() -> Status {
+    install::status()
 }
 
-/// Consulta la última release sin descargar nada. La usa la pantalla de
-/// selección para mostrar versión y tamaño antes de comprometerse.
+/// Checks the latest release without downloading anything. The selection screen
+/// uses it to show version and size before committing.
 #[tauri::command]
-async fn consultar_release(edicion: plataforma::Edicion) -> Result<manifiesto::PlanDescarga, String> {
-    let mut plan = manifiesto::consultar(edicion).await.map_err(descriptivo)?;
-    // Comparar versiones es cosa de números, no de texto: "1.9" no es mayor
-    // que "1.10" aunque lo parezca alfabéticamente.
-    plan.mas_nueva = instalacion::leer_registro()
-        .map(|r| manifiesto::es_mas_nueva(&plan.release.version, &r.version));
+async fn check_release(edition: platform::Edition) -> Result<manifest::DownloadPlan, String> {
+    let mut plan = manifest::fetch(edition).await.map_err(describe)?;
+    // Comparing versions is a matter of numbers, not text: "1.9" is not greater
+    // than "1.10" however much it looks that way alphabetically.
+    plan.is_newer =
+        install::read_record().map(|r| manifest::is_newer(&plan.release.version, &r.version));
     Ok(plan)
 }
 
 #[tauri::command]
-async fn instalar(app: tauri::AppHandle, opciones: Opciones) -> Result<Registro, String> {
-    // El callback emite al front; si la ventana ya no está, emitir falla y se
-    // ignora: la instalación en curso no se aborta porque nadie mire.
+async fn install(app: tauri::AppHandle, options: Options) -> Result<InstallRecord, String> {
+    // The callback emits to the front end; if the window is gone, emitting
+    // fails and is ignored: an installation in flight is not aborted just
+    // because nobody is watching.
     let app2 = app.clone();
-    instalacion::instalar(opciones, move |p: Progreso| {
-        let _ = app2.emit(EVENTO_PROGRESO, p);
+    install::install(options, move |p: Progress| {
+        let _ = app2.emit(PROGRESS_EVENT, p);
     })
     .await
-    .map_err(descriptivo)
+    .map_err(describe)
 }
 
 #[tauri::command]
-fn desinstalar(borrar_datos: bool) -> Result<String, String> {
-    instalacion::desinstalar(borrar_datos).map_err(descriptivo)
+fn uninstall(delete_data: bool) -> Result<String, String> {
+    install::uninstall(delete_data).map_err(describe)
 }
 
-/// Abre una app recién instalada y cierra el instalador.
+/// Launches a freshly installed app and closes the installer.
 #[tauri::command]
-fn abrir_instalado(app: tauri::AppHandle, componente: String) -> Result<(), String> {
-    let reg = instalacion::leer_registro().ok_or("no hay ninguna instalación registrada")?;
-    let comp = if componente == plataforma::Componente::SimulationStudio.id() {
-        plataforma::Componente::SimulationStudio
+fn launch_installed(app: tauri::AppHandle, component: String) -> Result<(), String> {
+    let record = install::read_record().ok_or("no installation is registered")?;
+    let comp = if component == platform::Component::SimulationStudio.id() {
+        platform::Component::SimulationStudio
     } else {
-        plataforma::Componente::MarsDesktop
+        platform::Component::MarsDesktop
     };
-    let exe = reg.carpeta.join(comp.archivo_exe());
+    let exe = record.dir.join(comp.exe_file());
     if !exe.is_file() {
-        return Err(format!("no encontré {}", exe.display()));
+        return Err(format!("could not find {}", exe.display()));
     }
     std::process::Command::new(&exe)
-        // Igual que hace mars-desktop con el Studio: el directorio de trabajo
-        // se pone en el del ejecutable para que encuentre lo que viaja al lado.
-        .current_dir(exe.parent().unwrap_or(&reg.carpeta))
+        // Same thing mars-desktop does with the Studio: the working directory
+        // is set to the executable's own so it finds whatever travels beside it.
+        .current_dir(exe.parent().unwrap_or(&record.dir))
         .spawn()
-        .map_err(|e| format!("no pude abrir {}: {e}", comp.nombre()))?;
+        .map_err(|e| format!("could not open {}: {e}", comp.name()))?;
 
-    // Se cierra sola: quedarse abierta detrás de la app que acaba de lanzar no
-    // le sirve a nadie.
+    // It closes itself: sitting behind the app it just launched helps nobody.
     app.exit(0);
     Ok(())
 }
 
-/// Abre la carpeta de instalación en el explorador del sistema.
+/// Opens the install folder in the system file browser.
 #[tauri::command]
-fn abrir_carpeta(ruta: String) -> Result<(), String> {
-    tauri_plugin_opener::open_path(ruta, None::<&str>).map_err(|e| e.to_string())
+fn open_folder(path: String) -> Result<(), String> {
+    tauri_plugin_opener::open_path(path, None::<&str>).map_err(|e| e.to_string())
 }
 
-/// Abre un enlace en el navegador.
+/// Opens a link in the browser.
 ///
-/// Solo se llama con la URL de la release que devolvió la API de GitHub, pero
-/// igual se comprueba el esquema: un `file://` o un `javascript:` acá no
-/// tendrían ningún sentido y sí consecuencias.
+/// It is only ever called with the release URL the GitHub API returned, but the
+/// scheme is checked anyway: a `file://` or a `javascript:` here would make no
+/// sense and would have consequences.
 #[tauri::command]
-fn abrir_url(url: String) -> Result<(), String> {
+fn open_url(url: String) -> Result<(), String> {
     if !url.starts_with("https://") {
-        return Err(format!("no abro un enlace que no sea https: {url}"));
+        return Err(format!("I will not open a link that is not https: {url}"));
     }
     tauri_plugin_opener::open_url(url, None::<&str>).map_err(|e| e.to_string())
 }
 
-/// anyhow encadena causas; sin esto el front muestra solo la última línea, que
-/// suele ser la menos útil ("archivo no encontrado" sin decir cuál).
-fn descriptivo(e: anyhow::Error) -> String {
-    let mut texto = e.to_string();
-    for causa in e.chain().skip(1) {
-        texto.push_str(&format!("\n  causa: {causa}"));
+/// anyhow chains causes; without this the front end shows only the last line,
+/// which tends to be the least useful one ("file not found", without saying
+/// which file).
+fn describe(e: anyhow::Error) -> String {
+    let mut text = e.to_string();
+    for cause in e.chain().skip(1) {
+        text.push_str(&format!("\n  cause: {cause}"));
     }
-    texto
+    text
 }
 
 fn main() {
-    let modo = if std::env::args().any(|a| a == "--uninstall" || a == "/uninstall") {
-        Modo::Desinstalar
+    let mode = if std::env::args().any(|a| a == "--uninstall" || a == "/uninstall") {
+        Mode::Uninstall
     } else {
-        Modo::Instalar
+        Mode::Install
     };
 
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
-        .manage(Arranque(modo))
+        .manage(Startup(mode))
         .setup(|app| {
-            // Restos de una instalación interrumpida: si quedaron, la próxima
-            // descarga los encontraría a medio bajar.
-            descarga::limpiar_temporal();
+            // Leftovers from an interrupted installation: if they stayed, the
+            // next download would find them half-fetched.
+            download::clean_temp();
             let _ = app.get_webview_window("main");
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            modo_inicial,
-            estado_instalacion,
-            consultar_release,
-            instalar,
-            desinstalar,
-            abrir_instalado,
-            abrir_carpeta,
-            abrir_url
+            initial_mode,
+            install_status,
+            check_release,
+            install,
+            uninstall,
+            launch_installed,
+            open_folder,
+            open_url
         ])
         .run(tauri::generate_context!())
-        .expect("error al arrancar MARS Installer");
+        .expect("error starting MARS Installer");
 }

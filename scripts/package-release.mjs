@@ -1,194 +1,196 @@
 #!/usr/bin/env node
-// Construye y empaqueta MARS para ESTA plataforma.
+// Builds and packages MARS for THIS platform.
 //
-//   node scripts/package-release.mjs                 todo lo que corresponda
-//   node scripts/package-release.mjs --sin-studio    solo el dashboard
-//   node scripts/package-release.mjs --solo tools    una sola edición
+//   node scripts/package-release.mjs                 everything that applies
+//   node scripts/package-release.mjs --no-studio     dashboard only
+//   node scripts/package-release.mjs --only tools    a single edition
+//   node scripts/package-release.mjs --arch x86_64   macOS' other architecture
 //
-// Deja los paquetes en `release/`, con los nombres que espera el instalador
-// (`installer/src/plataforma.rs::nombre_archivo`). Si esos nombres cambian de
-// un lado, hay que cambiarlos del otro: es el único contrato entre el
-// empaquetador y el instalador.
+// It leaves the archives in `release/`, with the names the installer expects
+// (`installer/src/platform.rs::archive_name`). If those names change on one
+// side they have to change on the other: it is the only contract between the
+// packager and the installer.
 //
-// Cada paquete lleva el ejecutable en la raíz y nada más. Que sea plano no es
-// casualidad: el instalador coloca el contenido tal cual en la carpeta de
-// instalación, y mars-desktop busca al Simulation Studio JUNTO a su propio
-// ejecutable (ver src-tauri/src/simlauncher.rs). Una carpeta intermedia
-// rompería ese hallazgo sin dar ningún error.
+// Every archive carries the executable at its root and nothing else. Being flat
+// is not incidental: the installer drops the contents straight into the install
+// folder, and mars-desktop looks for the Simulation Studio NEXT TO its own
+// executable (see src-tauri/src/simlauncher.rs). An intermediate folder would
+// break that lookup without any error at all.
 
 import { execFileSync } from "node:child_process"
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
-const raiz = join(dirname(fileURLToPath(import.meta.url)), "..")
-const salida = join(raiz, "release")
+const root = join(dirname(fileURLToPath(import.meta.url)), "..")
+const outDir = join(root, "release")
 
 const args = process.argv.slice(2)
-const sinStudio = args.includes("--sin-studio")
-const soloEdicion = args.includes("--solo") ? args[args.indexOf("--solo") + 1] : null
-// Cruzar de arquitectura SOLO tiene sentido en macOS, donde las dos conviven
-// en la misma plataforma y el SDK del sistema es universal. Windows y Linux se
-// construyen cada uno en el suyo.
-const arcoPedido = args.includes("--arch") ? args[args.indexOf("--arch") + 1] : null
+const noStudio = args.includes("--no-studio")
+const onlyEdition = args.includes("--only") ? args[args.indexOf("--only") + 1] : null
+// Crossing architectures ONLY makes sense on macOS, where both live on the same
+// platform and the system SDK is universal. Windows and Linux are each built on
+// their own.
+const requestedArch = args.includes("--arch") ? args[args.indexOf("--arch") + 1] : null
 
-// --- Plataforma -------------------------------------------------------------
+// --- Platform ---------------------------------------------------------------
 
-const SO = process.platform === "win32" ? "windows" : process.platform === "darwin" ? "macos" : "linux"
-const ARCH_NATIVA = process.arch === "arm64" ? "aarch64" : "x86_64"
-const ARCH = arcoPedido ?? ARCH_NATIVA
+const OS = process.platform === "win32" ? "windows" : process.platform === "darwin" ? "macos" : "linux"
+const NATIVE_ARCH = process.arch === "arm64" ? "aarch64" : "x86_64"
+const ARCH = requestedArch ?? NATIVE_ARCH
 if (ARCH !== "x86_64" && ARCH !== "aarch64") {
-  console.error(`Arquitectura desconocida: ${ARCH}`)
+  console.error(`Unknown architecture: ${ARCH}`)
   process.exit(2)
 }
-if (ARCH !== ARCH_NATIVA && SO !== "macos") {
-  console.error(`Solo se puede cruzar de arquitectura en macOS, no en ${SO}.`)
+if (ARCH !== NATIVE_ARCH && OS !== "macos") {
+  console.error(`Architectures can only be crossed on macOS, not on ${OS}.`)
   process.exit(2)
 }
-// `null` cuando se construye para la arquitectura nativa: pasar --target igual
-// mandaria la salida a target/<triple>/release y obligaria a recompilar lo que
-// ya estaba compilado.
-const TRIPLE = ARCH === ARCH_NATIVA ? null : `${ARCH}-apple-darwin`
+// `null` when building for the native architecture: passing --target anyway
+// would send the output to target/<triple>/release and force a rebuild of what
+// was already compiled.
+const TRIPLE = ARCH === NATIVE_ARCH ? null : `${ARCH}-apple-darwin`
 const SUBDIR = TRIPLE ? `${TRIPLE}/release` : "release"
-const EXE = SO === "windows" ? ".exe" : ""
-const EXT = SO === "windows" ? "zip" : "tar.gz"
-// El Studio arrastra Gazebo, que hoy solo se construye en Windows y Linux.
-const HAY_STUDIO = SO !== "macos"
 
-const version = readFileSync(join(raiz, "src/constants/version.ts"), "utf8").match(
+const EXE = OS === "windows" ? ".exe" : ""
+const EXT = OS === "windows" ? "zip" : "tar.gz"
+// The Studio drags Gazebo along, which today is only built on Windows and Linux.
+const HAS_STUDIO = OS !== "macos"
+
+const version = readFileSync(join(root, "src/constants/version.ts"), "utf8").match(
   /MARS_VERSION\s*=\s*"([^"]+)"/,
 )?.[1]
 if (!version) {
-  console.error("No pude leer MARS_VERSION de src/constants/version.ts")
+  console.error("Could not read MARS_VERSION from src/constants/version.ts")
   process.exit(2)
 }
 
-// --- Utilidades -------------------------------------------------------------
+// --- Helpers ----------------------------------------------------------------
 
-const correr = (cmd, args, opciones = {}) => {
-  console.log(`\n$ ${cmd} ${args.join(" ")}`)
-  execFileSync(cmd, args, { stdio: "inherit", cwd: raiz, shell: SO === "windows", ...opciones })
+const run = (cmd, cmdArgs, options = {}) => {
+  console.log(`\n$ ${cmd} ${cmdArgs.join(" ")}`)
+  execFileSync(cmd, cmdArgs, { stdio: "inherit", cwd: root, shell: OS === "windows", ...options })
 }
 
 /**
- * Comprime `archivos` (rutas absolutas) en un paquete plano.
+ * Compresses `files` (absolute paths) into one flat archive.
  *
- * Se usa la herramienta del sistema en vez de una librería de npm: tanto
- * `Compress-Archive` como `tar` están en las tres plataformas y en los
- * runners de CI, y el empaquetador no necesita un node_modules propio.
+ * The system's own tool is used rather than an npm library: both
+ * `Compress-Archive` and `tar` exist on all three platforms and on the CI
+ * runners, and the packager needs no node_modules of its own.
  */
-function empaquetar(nombre, archivos) {
-  const destino = join(salida, nombre)
-  rmSync(destino, { force: true })
+function packageArchive(name, files) {
+  const dest = join(outDir, name)
+  rmSync(dest, { force: true })
 
-  if (SO === "windows") {
-    const lista = archivos.map((a) => `'${a.replace(/'/g, "''")}'`).join(",")
-    correr("powershell", [
+  if (OS === "windows") {
+    const list = files.map((f) => `'${f.replace(/'/g, "''")}'`).join(",")
+    run("powershell", [
       "-NoProfile",
       "-Command",
-      `Compress-Archive -Path ${lista} -DestinationPath '${destino.replace(/'/g, "''")}' -Force`,
+      `Compress-Archive -Path ${list} -DestinationPath '${dest.replace(/'/g, "''")}' -Force`,
     ])
   } else {
-    // -C por archivo para que el tar quede plano aunque los binarios vengan de
-    // carpetas distintas (target/release de dos crates diferentes).
-    const partes = archivos.flatMap((a) => ["-C", dirname(a), a.slice(dirname(a).length + 1)])
-    correr("tar", ["-czf", destino, ...partes])
+    // -C per file so the tar stays flat even when the binaries come from
+    // different folders (target/release of two different crates).
+    const parts = files.flatMap((f) => ["-C", dirname(f), f.slice(dirname(f).length + 1)])
+    run("tar", ["-czf", dest, ...parts])
   }
-  const bytes = readFileSync(destino).length
-  console.log(`  → ${nombre} (${(bytes / 1048576).toFixed(1)} MB)`)
+  const bytes = readFileSync(dest).length
+  console.log(`  → ${name} (${(bytes / 1048576).toFixed(1)} MB)`)
 }
 
-// --- Construcción -----------------------------------------------------------
+// --- Build ------------------------------------------------------------------
 
 console.log(
-  `\nMARS ${version} — empaquetando para ${SO} ${ARCH}` +
-    (TRIPLE ? ` (cruzado desde ${ARCH_NATIVA})` : "") +
+  `\nMARS ${version} — packaging for ${OS} ${ARCH}` +
+    (TRIPLE ? ` (crossed from ${NATIVE_ARCH})` : "") +
     `\n${"=".repeat(46)}`,
 )
-correr("node", ["scripts/sync-version.mjs"])
+run("node", ["scripts/sync-version.mjs"])
 
-// La carpeta se vacia SOLO en el pase de la arquitectura nativa. El segundo
-// pase de macOS (`--arch x86_64`) corre sobre la misma carpeta, y si tambien
-// la vaciara se llevaria por delante los paquetes arm64 que acaba de dejar el
-// primero --- que es exactamente lo que paso la primera vez: la release salio
-// sin ningun archivo de Apple Silicon y el workflow igual dijo "success".
-if (!arcoPedido) {
-  rmSync(salida, { recursive: true, force: true })
+// The folder is emptied ONLY on the native-architecture pass. macOS' second
+// pass (`--arch x86_64`) runs against the same folder, and if it emptied it too
+// it would wipe the arm64 archives the first pass had just left there — which
+// is exactly what happened the first time: the release went out with no Apple
+// Silicon files at all and the workflow still said "success".
+if (!requestedArch) {
+  rmSync(outDir, { recursive: true, force: true })
 }
-mkdirSync(salida, { recursive: true })
+mkdirSync(outDir, { recursive: true })
 
-// El icono viaja con el paquete: en Linux el `.desktop` que crea el instalador
-// lo referencia por ruta, y sin él el lanzador sale con el icono genérico.
-const icono = join(salida, "icon.png")
-cpSync(join(raiz, "src-tauri/icons/128x128@2x.png"), icono)
+// The icon travels with the archive: on Linux the `.desktop` file the installer
+// writes references it by path, and without it the launcher gets the generic
+// icon.
+const icon = join(outDir, "icon.png")
+cpSync(join(root, "src-tauri/icons/128x128@2x.png"), icon)
 
-const ediciones = soloEdicion ? [soloEdicion] : ["full", "tools"]
-for (const edicion of ediciones) {
-  if (edicion !== "full" && edicion !== "tools") {
-    console.error(`Edición desconocida: ${edicion}`)
+const editions = onlyEdition ? [onlyEdition] : ["full", "tools"]
+for (const edition of editions) {
+  if (edition !== "full" && edition !== "tools") {
+    console.error(`Unknown edition: ${edition}`)
     process.exit(2)
   }
-  console.log(`\n--- mars-desktop (${edicion}) ---`)
+  console.log(`\n--- mars-desktop (${edition}) ---`)
 
-  // El front primero: el binario lo empotra al compilar.
-  correr("npm", ["run", "build"], { env: { ...process.env, MARS_EDITION: edicion } })
+  // The front end first: the binary embeds it at compile time.
+  run("npm", ["run", "build"], { env: { ...process.env, MARS_EDITION: edition } })
 
-  // `custom-protocol` va explicita y no como feature `default` porque la
-  // edicion Tools se construye con --no-default-features, que se la llevaria
-  // puesta: el binario abriria el devUrl y mostraria el error de conexion del
-  // webview en vez de la app. Ver la nota en src-tauri/Cargo.toml.
+  // `custom-protocol` is passed explicitly rather than being a `default`
+  // feature because the Tools edition is built with --no-default-features,
+  // which would take it away: the binary would open the devUrl and show the
+  // webview's connection error instead of the app. See the note in
+  // src-tauri/Cargo.toml.
   const cargo = [
     "build", "--release",
     "--manifest-path", "src-tauri/Cargo.toml",
     "--features", "custom-protocol",
   ]
-  if (edicion === "tools") cargo.push("--no-default-features")
+  if (edition === "tools") cargo.push("--no-default-features")
   if (TRIPLE) cargo.push("--target", TRIPLE)
-  correr("cargo", cargo)
+  run("cargo", cargo)
 
-  const binario = join(raiz, "src-tauri/target", SUBDIR, `mars-desktop${EXE}`)
-  if (!existsSync(binario)) {
-    console.error(`cargo no dejó ${binario}`)
+  const binary = join(root, "src-tauri/target", SUBDIR, `mars-desktop${EXE}`)
+  if (!existsSync(binary)) {
+    console.error(`cargo did not leave ${binary}`)
     process.exit(1)
   }
-  empaquetar(`mars-desktop-${edicion}-${SO}-${ARCH}.${EXT}`, [binario, icono])
+  packageArchive(`mars-desktop-${edition}-${OS}-${ARCH}.${EXT}`, [binary, icon])
 }
 
-if (HAY_STUDIO && !sinStudio) {
+if (HAS_STUDIO && !noStudio) {
   console.log("\n--- MARS Simulation Studio ---")
   const cargoStudio = ["build", "--release", "--manifest-path", "sim/app/Cargo.toml"]
   if (TRIPLE) cargoStudio.push("--target", TRIPLE)
-  correr("cargo", cargoStudio)
-  const binario = join(raiz, "sim/app/target", SUBDIR, `mars-sim-app${EXE}`)
-  if (existsSync(binario)) {
-    empaquetar(`mars-simulation-studio-${SO}-${ARCH}.${EXT}`, [binario, icono])
+  run("cargo", cargoStudio)
+  const binary = join(root, "sim/app/target", SUBDIR, `mars-sim-app${EXE}`)
+  if (existsSync(binary)) {
+    packageArchive(`mars-simulation-studio-${OS}-${ARCH}.${EXT}`, [binary, icon])
   } else {
-    // No es fatal: el instalador sabe seguir sin un componente que la release
-    // no publique, y lo dice en pantalla.
-    console.warn(`AVISO: no se construyó el Studio (${binario} no existe); la release sale sin él.`)
+    // Not fatal: the installer knows how to carry on without a component the
+    // release does not publish, and says so on screen.
+    console.warn(
+      `WARNING: the Studio was not built (${binary} does not exist); the release ships without it.`,
+    )
   }
 }
 
-// --- El instalador ----------------------------------------------------------
+// --- The installer ----------------------------------------------------------
 //
-// Va suelto, sin comprimir: es lo que la gente descarga y ejecuta. Un zip de
-// un solo .exe solo agrega un paso.
+// It ships loose, uncompressed: it is what people download and run. A zip
+// holding a single .exe only adds a step.
 console.log("\n--- MARS Installer ---")
-const cargoInst = ["build", "--release", "--manifest-path", "installer/Cargo.toml"]
-if (TRIPLE) cargoInst.push("--target", TRIPLE)
-correr("cargo", cargoInst)
-const instalador = join(raiz, "installer/target", SUBDIR, `mars-installer${EXE}`)
-if (existsSync(instalador)) {
-  const nombre =
-    SO === "windows" ? "MARS-Installer.exe" : `MARS-Installer-${SO}-${ARCH}`
-  cpSync(instalador, join(salida, nombre))
-  console.log(`  → ${nombre}`)
+const cargoInstaller = ["build", "--release", "--manifest-path", "installer/Cargo.toml"]
+if (TRIPLE) cargoInstaller.push("--target", TRIPLE)
+run("cargo", cargoInstaller)
+const installer = join(root, "installer/target", SUBDIR, `mars-installer${EXE}`)
+if (existsSync(installer)) {
+  const name = OS === "windows" ? "MARS-Installer.exe" : `MARS-Installer-${OS}-${ARCH}`
+  cpSync(installer, join(outDir, name))
+  console.log(`  → ${name}`)
 }
 
-rmSync(icono, { force: true })
+rmSync(icon, { force: true })
 
-writeFileSync(
-  join(salida, "VERSION"),
-  `${version}\n`,
-)
-console.log(`\nListo. Paquetes en ${salida}`)
+writeFileSync(join(outDir, "VERSION"), `${version}\n`)
+console.log(`\nDone. Archives are in ${outDir}`)

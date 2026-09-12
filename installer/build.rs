@@ -1,27 +1,27 @@
 use std::path::Path;
 
 fn main() {
-    // La UI se EMPOTRA en el binario al compilar (lo hace
-    // `tauri::generate_context!` con el `frontendDist` de tauri.conf.json), y
-    // `tauri-build` solo emite rerun-if-changed para tauri.conf.json y
-    // capabilities/. Sin esto, editar un .js y recompilar no recompila nada:
-    // cargo dice "Finished", la app abre con la version anterior y el cambio
-    // no aparece, sin ningun error. Es la misma trampa que documenta el
-    // build.rs del Simulation Studio.
-    vigilar(Path::new("ui"));
+    // The UI is EMBEDDED into the binary at compile time (that is what
+    // `tauri::generate_context!` does with tauri.conf.json's `frontendDist`),
+    // and `tauri-build` only emits rerun-if-changed for tauri.conf.json and
+    // capabilities/. Without this, editing a .js and rebuilding recompiles
+    // nothing: cargo says "Finished", the app opens with the previous version
+    // and the change simply does not show up, with no error at all. It is the
+    // same trap the Simulation Studio's build.rs documents.
+    watch(Path::new("ui"));
 
     tauri_build::build()
 }
 
-fn vigilar(dir: &Path) {
+fn watch(dir: &Path) {
     println!("cargo:rerun-if-changed={}", dir.display());
-    let Ok(entradas) = std::fs::read_dir(dir) else {
+    let Ok(entries) = std::fs::read_dir(dir) else {
         return;
     };
-    for e in entradas.flatten() {
+    for e in entries.flatten() {
         let p = e.path();
         if p.is_dir() {
-            vigilar(&p);
+            watch(&p);
         } else {
             println!("cargo:rerun-if-changed={}", p.display());
         }

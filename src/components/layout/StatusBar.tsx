@@ -74,8 +74,8 @@ export default function StatusBar({ connection, projectName, logSource }: Props)
         </StatusField>
       )}
 
-      {/* Una version escrita a mano acá mentía desde hacía varias releases.
-          Sale de la misma constante que el splash y el instalador. */}
+      {/* A hand-written version here had been lying for several releases. It
+          comes from the same constant as the splash screen and the installer. */}
       <div style={{ marginLeft: "auto", fontSize: 10, color: "var(--text-light)" }}>
         {MARS_PRODUCT_NAME} {MARS_VERSION_LABEL}
       </div>

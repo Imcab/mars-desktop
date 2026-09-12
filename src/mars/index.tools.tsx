@@ -1,14 +1,14 @@
-// Edición TOOLS: la app sin el framework MARS.
+// The TOOLS edition: the app without the MARS framework.
 //
-// Pensada para equipos que quieren el dashboard —NetworkTables, visualizadores,
-// gráficas, SysId— sin adoptar MARS. No es un interruptor que esconde botones:
-// este módulo reemplaza a `index.tsx` vía el alias `@mars` de vite.config.ts,
-// así que las páginas de proyecto, paquetes, manifiesto, wizard, features,
-// subsistemas y watchdog NO ENTRAN AL BUNDLE. Tampoco su código Rust, que
-// queda fuera por la feature `mars` de Cargo.
+// Meant for teams who want the dashboard — NetworkTables, visualisers, plots,
+// SysId — without adopting MARS. This is not a switch that hides buttons: this
+// module replaces `index.tsx` through the `@mars` alias in vite.config.ts, so
+// the project, packages, manifest, wizard, features, subsystems and watchdog
+// pages NEVER REACH THE BUNDLE. Neither does their Rust code, which is left out
+// by cargo's `mars` feature.
 //
-// Las listas vacías son a propósito: los grupos del sidebar y las secciones de
-// menú que se quedan sin entradas no se pintan.
+// The empty lists are deliberate: sidebar groups and menu sections that end up
+// with no entries are not painted at all.
 
 import type { MarsNavItem, MarsPageContext, MarsSurface } from "./types"
 import type { Page } from "../store/appStore"

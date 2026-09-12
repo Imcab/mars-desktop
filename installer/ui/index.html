@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -9,130 +9,131 @@
 </head>
 <body>
   <div id="app">
-    <!-- La misma banda que la pantalla de inicio de mars-desktop: quien abre
-         esto ya vio esa franja, o la va a ver en un minuto. -->
-    <div class="marca">
+    <!-- The same band as mars-desktop's welcome screen: whoever opens this has
+         seen that strip already, or will in a minute. -->
+    <div class="brand">
       <img src="marslogo.png" alt="MARS" />
-      <div class="divisor"></div>
+      <div class="divider"></div>
       <div>
-        <div class="titulo">Modular Architecture for Robot Systems</div>
-        <div class="sub" id="marca-sub">INSTALADOR</div>
+        <div class="title">Modular Architecture for Robot Systems</div>
+        <div class="sub" id="brand-sub">INSTALLER</div>
       </div>
     </div>
 
-    <div class="cuerpo">
+    <div class="body">
 
-      <!-- 1. Estado: qué hay instalado y qué se puede hacer -------------- -->
-      <section class="paso" id="paso-inicio">
-        <h1 id="inicio-titulo">Instalar MARS Desktop</h1>
-        <p class="lede" id="inicio-lede"></p>
-        <div id="inicio-resumen"></div>
-        <div id="inicio-avisos"></div>
+      <!-- 1. Status: what is installed and what can be done ---------------- -->
+      <section class="step" id="step-start">
+        <h1 id="start-title">Install MARS Desktop</h1>
+        <p class="lede" id="start-lede"></p>
+        <div id="start-summary"></div>
+        <div id="start-notices"></div>
       </section>
 
-      <!-- 2. Edición ---------------------------------------------------- -->
-      <section class="paso" id="paso-edicion">
-        <h1>¿Qué querés instalar?</h1>
+      <!-- 2. Edition ------------------------------------------------------- -->
+      <section class="step" id="step-edition">
+        <h1>What do you want to install?</h1>
         <p class="lede">
-          Se puede cambiar después volviendo a pasar el instalador. Tus
-          preferencias y layouts no se tocan.
+          You can change this later by running the installer again. Your
+          preferences and layouts are left alone.
         </p>
 
-        <div class="ediciones">
-          <div class="edicion" id="ed-full" data-edicion="full">
+        <div class="editions">
+          <div class="edition" id="ed-full" data-edition="full">
             <div class="radio"></div>
             <div>
-              <div class="nombre">
-                MARS completo
-                <span class="etiqueta" id="ed-full-tag">recomendado</span>
+              <div class="name">
+                Complete MARS
+                <span class="tag">recommended</span>
               </div>
               <div class="desc">
-                Todo el ecosistema: el dashboard con el framework MARS y el
-                simulador.
+                The whole ecosystem: the dashboard with the MARS framework, plus
+                the simulator.
               </div>
-              <ul id="ed-full-lista"></ul>
+              <ul id="ed-full-list"></ul>
             </div>
           </div>
 
-          <div class="edicion" id="ed-tools" data-edicion="tools">
+          <div class="edition" id="ed-tools" data-edition="tools">
             <div class="radio"></div>
             <div>
-              <div class="nombre">Solo herramientas</div>
+              <div class="name">Tools only</div>
               <div class="desc">
-                El dashboard de NetworkTables, sin nada del framework MARS. Para
-                equipos que quieren la herramienta y ya tienen su propio código.
+                The NetworkTables dashboard, with nothing from the MARS
+                framework. For teams who want the tool and already have their own
+                code.
               </div>
-              <ul id="ed-tools-lista"></ul>
+              <ul id="ed-tools-list"></ul>
             </div>
           </div>
         </div>
 
-        <div class="campo">
-          <label for="ruta">Carpeta de instalación</label>
-          <div class="ruta">
-            <input type="text" id="ruta" spellcheck="false" />
-            <button id="btn-examinar">Examinar…</button>
+        <div class="field">
+          <label for="path">Install folder</label>
+          <div class="path">
+            <input type="text" id="path" spellcheck="false" />
+            <button id="btn-browse">Browse…</button>
           </div>
         </div>
 
         <label class="check">
-          <input type="checkbox" id="chk-escritorio" checked />
-          Crear acceso directo en el escritorio
+          <input type="checkbox" id="chk-desktop" checked />
+          Create a desktop shortcut
         </label>
 
-        <div id="edicion-avisos"></div>
+        <div id="edition-notices"></div>
       </section>
 
-      <!-- 3. Confirmación ----------------------------------------------- -->
-      <section class="paso" id="paso-confirmar">
-        <h1>Todo listo para instalar</h1>
-        <p class="lede" id="confirmar-lede"></p>
-        <div id="confirmar-resumen"></div>
-        <div id="confirmar-notas"></div>
-        <div id="confirmar-avisos"></div>
+      <!-- 3. Confirmation --------------------------------------------------- -->
+      <section class="step" id="step-confirm">
+        <h1>Ready to install</h1>
+        <p class="lede" id="confirm-lede"></p>
+        <div id="confirm-summary"></div>
+        <div id="confirm-notes"></div>
+        <div id="confirm-notices"></div>
       </section>
 
-      <!-- 4. Progreso ---------------------------------------------------- -->
-      <section class="paso" id="paso-progreso">
-        <h1 id="progreso-titulo">Instalando</h1>
-        <p class="lede">No cierres esta ventana hasta que termine.</p>
-        <div class="barra"><div class="relleno" id="barra-relleno"></div></div>
-        <div class="pct"><span id="progreso-pct">0%</span></div>
-        <div class="fase" id="progreso-fase">Preparando…</div>
-        <div class="bitacora" id="bitacora"></div>
+      <!-- 4. Progress ------------------------------------------------------- -->
+      <section class="step" id="step-progress">
+        <h1 id="progress-title">Installing</h1>
+        <p class="lede">Do not close this window until it finishes.</p>
+        <div class="bar"><div class="fill" id="bar-fill"></div></div>
+        <div class="pct"><span id="progress-pct">0%</span></div>
+        <div class="phase" id="progress-phase">Getting ready…</div>
+        <div class="log" id="log"></div>
       </section>
 
-      <!-- 5. Final ------------------------------------------------------- -->
-      <section class="paso" id="paso-final">
-        <h1 id="final-titulo">Listo</h1>
-        <p class="lede" id="final-lede"></p>
-        <div id="final-resumen"></div>
-        <div id="final-avisos"></div>
+      <!-- 5. Done ----------------------------------------------------------- -->
+      <section class="step" id="step-done">
+        <h1 id="done-title">Done</h1>
+        <p class="lede" id="done-lede"></p>
+        <div id="done-summary"></div>
+        <div id="done-notices"></div>
       </section>
 
-      <!-- 6. Desinstalar -------------------------------------------------- -->
-      <section class="paso" id="paso-desinstalar">
-        <h1>Desinstalar MARS</h1>
+      <!-- 6. Uninstall ------------------------------------------------------- -->
+      <section class="step" id="step-uninstall">
+        <h1>Uninstall MARS</h1>
         <p class="lede">
-          Se quitan los programas y sus accesos directos. Solo se borra lo que
-          este instalador puso.
+          The programs and their shortcuts are removed. Only what this installer
+          put there is deleted.
         </p>
-        <div id="desinstalar-resumen"></div>
+        <div id="uninstall-summary"></div>
         <label class="check">
-          <input type="checkbox" id="chk-datos" />
-          Borrar también mis preferencias, layouts y packs de assets 3D
+          <input type="checkbox" id="chk-data" />
+          Also delete my preferences, layouts and 3D asset packs
         </label>
-        <div class="aviso-caja" id="desinstalar-aviso"></div>
+        <div class="notice-box" id="uninstall-notice"></div>
       </section>
 
     </div>
 
-    <div class="pie">
-      <button class="plano" id="btn-atras">Atrás</button>
-      <div class="relleno"></div>
-      <button class="plano peligro" id="btn-desinstalar">Desinstalar</button>
-      <button id="btn-cancelar">Cancelar</button>
-      <button class="primario" id="btn-siguiente">Siguiente</button>
+    <div class="footer">
+      <button class="flat" id="btn-back">Back</button>
+      <div class="spacer"></div>
+      <button class="flat danger" id="btn-uninstall">Uninstall</button>
+      <button id="btn-cancel">Cancel</button>
+      <button class="primary" id="btn-next">Next</button>
     </div>
   </div>
 

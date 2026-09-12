@@ -1,33 +1,33 @@
 use std::path::Path;
 
 fn main() {
-    // El bundle de vite se EMPOTRA en el binario al compilar (lo hace
-    // `tauri::generate_context!` con el `frontendDist` de tauri.conf.json), y
-    // `tauri-build` solo emite rerun-if-changed para tauri.conf.json y
+    // Vite's bundle is EMBEDDED into the binary at compile time (that is what
+    // `tauri::generate_context!` does with tauri.conf.json's `frontendDist`),
+    // and `tauri-build` only emits rerun-if-changed for tauri.conf.json and
     // capabilities/.
     //
-    // Sin esto, construir una edición y después la otra puede dejar el binario
-    // nuevo con el bundle VIEJO adentro: cargo dice "Finished" sin recompilar
-    // nada porque ningún .rs cambió. Es exactamente la trampa que documenta el
-    // build.rs del Simulation Studio, y acá muerde al empaquetar la release,
-    // que construye full y tools una detrás de la otra.
-    vigilar(Path::new("../dist"));
+    // Without this, building one edition and then the other can leave the new
+    // binary with the OLD bundle inside: cargo says "Finished" without
+    // recompiling anything because no .rs changed. It is exactly the trap the
+    // Simulation Studio's build.rs documents, and here it bites when packaging
+    // the release, which builds full and tools back to back.
+    watch(Path::new("../dist"));
 
     tauri_build::build()
 }
 
-fn vigilar(dir: &Path) {
+fn watch(dir: &Path) {
     println!("cargo:rerun-if-changed={}", dir.display());
-    let Ok(entradas) = std::fs::read_dir(dir) else {
-        // En un checkout limpio todavía no hay dist/: el `npm run build` del
-        // beforeBuildCommand la crea, y esa creación ya dispara la
-        // recompilación por la línea de arriba.
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        // A clean checkout has no dist/ yet: the beforeBuildCommand's
+        // `npm run build` creates it, and that creation already triggers the
+        // rebuild through the line above.
         return;
     };
-    for e in entradas.flatten() {
+    for e in entries.flatten() {
         let p = e.path();
         if p.is_dir() {
-            vigilar(&p);
+            watch(&p);
         } else {
             println!("cargo:rerun-if-changed={}", p.display());
         }

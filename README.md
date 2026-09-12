@@ -1,76 +1,75 @@
 # MARS Desktop
 
-Dashboard de NetworkTables para FRC: visualizadores de cancha 2D y 3D, swerve,
-mecanismos, gráficas, ecuaciones en vivo, SysId, análisis de loop timing y
-ancho de banda, consola de comandos y lectura/escritura de logs `.wpilog`.
+A NetworkTables dashboard for FRC: 2D and 3D field visualisers, swerve,
+mechanisms, plots, live equations, SysId, loop-timing and bandwidth analysis, a
+command console, and reading/writing of `.wpilog` files.
 
-Es la herramienta del framework [MARS](https://github.com/STZ-Robotics/Mars),
-pero **no hace falta usar MARS para usarla**: se publica en dos ediciones.
+It is the tool that goes with the [MARS](https://github.com/STZ-Robotics/Mars)
+framework, but **you do not need MARS to use it**: it ships in two editions.
 
-## Instalación
+## Installing
 
-Descargá el instalador de la
-[última release](https://github.com/Imcab/mars-desktop/releases/latest) y
-ejecutalo. Él baja todo lo demás.
+Download the installer for your system from the
+[latest release](https://github.com/Imcab/mars-desktop/releases/latest) and run
+it. It fetches everything else.
 
-| Sistema | Archivo |
+| System | File |
 |---|---|
-| **Windows** (recomendado) | `MARS-Installer.exe` |
-| Linux | `MARS-Installer-linux-x86_64` (`chmod +x` primero) |
-| macOS | `MARS-Installer-macos-aarch64` o `-x86_64` (`chmod +x` primero) |
+| **Windows** (recommended) | `MARS-Installer.exe` |
+| Linux | `MARS-Installer-linux-x86_64` (`chmod +x` first) |
+| macOS | `MARS-Installer-macos-aarch64` or `-x86_64` (`chmod +x` first) |
 
-El instalador deja elegir la edición, no necesita permisos de administrador y
-también desinstala. Los detalles están en
-[`installer/README.md`](installer/README.md).
+The installer lets you pick the edition, needs no administrator rights, and also
+uninstalls. The details are in [`installer/README.md`](installer/README.md).
 
-### Las dos ediciones
+### The two editions
 
-| | MARS completo | Solo herramientas |
+| | Complete MARS | Tools only |
 |---|---|---|
-| Dashboard, visualizadores, gráficas, SysId, logs | ✅ | ✅ |
-| Framework MARS: proyectos, paquetes, manifiesto, wizard, features, subsistemas, watchdog | ✅ | — |
-| MARS Simulation Studio | ✅ (no en macOS) | — |
+| Dashboard, visualisers, plots, SysId, logs | ✅ | ✅ |
+| MARS framework: projects, packages, manifest, wizard, features, subsystems, watchdog | ✅ | — |
+| MARS Simulation Studio | ✅ (not on macOS) | — |
 
-"Solo herramientas" es una compilación distinta, no la misma app con botones
-escondidos: el código de MARS no entra ni al bundle del front ni al binario de
-Rust. El cómo y el porqué están en [`src/mars/README.md`](src/mars/README.md).
+"Tools only" is a separate build, not the same app with the buttons hidden: the
+MARS code reaches neither the front-end bundle nor the Rust binary. The how and
+the why are in [`src/mars/README.md`](src/mars/README.md).
 
-## Desarrollo
+## Development
 
 ```bash
 npm install
-npm run tauri dev                    # edición completa
-MARS_EDITION=tools npm run tauri dev  # edición Tools
+npm run tauri dev                     # complete edition
+MARS_EDITION=tools npm run tauri dev  # Tools edition
 
-npm test                                       # tests del front (vitest)
-cargo test --manifest-path src-tauri/Cargo.toml # tests de Rust
-npm run build                                  # tsc + vite
+npm test                                        # front-end tests (vitest)
+cargo test --manifest-path src-tauri/Cargo.toml # Rust tests
+npm run build                                   # tsc + vite
 ```
 
-`MARS_EDITION` elige qué se compila; por defecto, `full`.
+`MARS_EDITION` chooses what gets compiled; it defaults to `full`.
 
-## Cómo está armado
+## How it is put together
 
-| Carpeta | Qué es |
+| Folder | What it is |
 |---|---|
-| `src/` | La interfaz (React + TypeScript). `src/mars/` es el bloque que solo existe en la edición completa. |
-| `src-tauri/` | El backend: cliente NT4 propio, lectura y escritura de `.wpilog`, assets 3D, generadores de código Java. |
-| `installer/` | **MARS Installer**: la app que instala, actualiza y desinstala el ecosistema. |
-| `sim/` | **MARS Simulation Studio** y el motor de simulación sobre Gazebo. Es un producto aparte con su propio ciclo de vida. |
-| `scripts/` | Empaquetado de releases y sincronización de versiones. |
+| `src/` | The interface (React + TypeScript). `src/mars/` is the block that only exists in the complete edition. |
+| `src-tauri/` | The backend: our own NT4 client, `.wpilog` reading and writing, 3D assets, Java code generators. |
+| `installer/` | **MARS Installer**: the app that installs, updates and uninstalls the ecosystem. |
+| `sim/` | **MARS Simulation Studio** and the Gazebo-based simulation engine. A separate product with its own life cycle. |
+| `scripts/` | Release packaging and version syncing. |
 
-## Publicar una versión
+## Releasing a version
 
-La versión se escribe en **un solo lugar**, `src/constants/version.ts`; los
-otros tres archivos que la llevan (`package.json`, `src-tauri/Cargo.toml`,
-`src-tauri/tauri.conf.json`) se alinean con:
+The version is written in **one place**, `src/constants/version.ts`; the other
+three files that carry it (`package.json`, `src-tauri/Cargo.toml`,
+`src-tauri/tauri.conf.json`) are lined up with:
 
 ```bash
 node scripts/sync-version.mjs --write
 ```
 
-Después, una etiqueta `vX.Y.Z` dispara `.github/workflows/release.yml`, que
-construye en los cuatro runners (Windows, Linux, macOS arm64 e Intel), escribe
-el `manifest.json` con los sha256 reales y publica la release. Cada plataforma
-se construye en la suya porque Tauri enlaza contra el webview del sistema: no
-hay compilación cruzada posible.
+After that, a `vX.Y.Z` tag fires `.github/workflows/release.yml`, which builds on
+three runners (Windows, Linux, and macOS producing both architectures), writes
+`manifest.json` with the real sha256 sums, and publishes the release. Each
+platform is built on its own because Tauri links against the system webview:
+cross-compiling between operating systems is not possible.

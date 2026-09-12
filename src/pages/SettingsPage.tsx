@@ -108,10 +108,10 @@ export default function SettingsPage() {
           </div>
         </Panel>
 
-        {/* Rutas y publicacion de features solo tienen sentido con el
-            framework: en la edicion Tools no hay workspace ni features que
-            empaquetar. El config.json guarda igual los campos, asi que cambiar
-            de edicion no borra lo que ya habia escrito. */}
+        {/* Paths and feature publishing only make sense with the framework: in
+            the Tools edition there is no workspace and no features to package.
+            config.json keeps the fields either way, so switching editions does
+            not erase what was already written there. */}
         {MARS_ENABLED && (
         <>
         <Panel title="System Paths" icon="ti-folder-cog">

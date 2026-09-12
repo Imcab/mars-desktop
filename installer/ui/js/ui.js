@@ -1,92 +1,91 @@
-// Utilidades de pintado. Nada de framework: son cinco pantallas.
+// Painting helpers. No framework: there are five screens.
 
 export const $ = (id) => document.getElementById(id)
 
-/** Crea un elemento con clase y texto en una línea. */
-export function el(tag, clase, texto) {
+/** Creates an element with a class and text in one line. */
+export function el(tag, className, text) {
   const n = document.createElement(tag)
-  if (clase) n.className = clase
-  if (texto !== undefined) n.textContent = texto
+  if (className) n.className = className
+  if (text !== undefined) n.textContent = text
   return n
 }
 
 /**
- * Tabla de pares clave/valor.
+ * A key/value table.
  *
- * `textContent` en vez de innerHTML a propósito: acá entran rutas y notas de
- * release, que son texto de afuera. Un `<` en una nota no tiene por qué poder
- * romper la pantalla.
+ * `textContent` rather than innerHTML on purpose: what goes in here is paths and
+ * release notes, which are text from elsewhere. A `<` in a note has no business
+ * being able to break the screen.
  */
-export function resumen(contenedor, filas) {
-  contenedor.replaceChildren()
-  const caja = el("div", "resumen")
-  for (const [k, v] of filas) {
+export function summary(container, rows) {
+  container.replaceChildren()
+  const box = el("div", "summary")
+  for (const [k, v] of rows) {
     if (v === null || v === undefined || v === "") continue
-    const fila = el("div", "fila")
-    fila.append(el("div", "k", k), el("div", "v", String(v)))
-    caja.appendChild(fila)
+    const row = el("div", "row")
+    row.append(el("div", "k", k), el("div", "v", String(v)))
+    box.appendChild(row)
   }
-  contenedor.appendChild(caja)
+  container.appendChild(box)
 }
 
-export function caja(contenedor, tipo, texto) {
-  contenedor.replaceChildren()
-  if (!texto) return
-  contenedor.appendChild(el("div", `${tipo}-caja`, texto))
+export function notice(container, kind, text) {
+  container.replaceChildren()
+  if (!text) return
+  container.appendChild(el("div", `${kind}-box`, text))
 }
 
-/** Muestra una sola pantalla del asistente. */
-export function mostrarPaso(id) {
-  for (const s of document.querySelectorAll(".paso")) {
-    s.classList.toggle("activo", s.id === `paso-${id}`)
+/** Shows exactly one screen of the wizard. */
+export function showStep(id) {
+  for (const s of document.querySelectorAll(".step")) {
+    s.classList.toggle("active", s.id === `step-${id}`)
   }
-  // Cada pantalla empieza desde arriba; si no, se hereda el scroll de la
-  // anterior y el título queda fuera de vista.
-  document.querySelector(".cuerpo").scrollTop = 0
+  // Every screen starts at the top; otherwise it inherits the previous one's
+  // scroll position and the heading is out of sight.
+  document.querySelector(".body").scrollTop = 0
 }
 
-/** Configura los cuatro botones del pie de una sola vez. */
-export function pie({ atras, siguiente, cancelar, desinstalar }) {
-  const cfg = (boton, opciones) => {
-    if (!opciones) {
-      boton.style.display = "none"
+/** Configures the four footer buttons in one go. */
+export function footer({ back, next, cancel, uninstall }) {
+  const set = (button, options) => {
+    if (!options) {
+      button.style.display = "none"
       return
     }
-    boton.style.display = ""
-    boton.textContent = opciones.texto ?? boton.textContent
-    boton.disabled = !!opciones.deshabilitado
-    boton.onclick = opciones.al ?? null
+    button.style.display = ""
+    button.textContent = options.text ?? button.textContent
+    button.disabled = !!options.disabled
+    button.onclick = options.on ?? null
   }
-  cfg($("btn-atras"), atras)
-  cfg($("btn-siguiente"), siguiente)
-  cfg($("btn-cancelar"), cancelar)
-  cfg($("btn-desinstalar"), desinstalar)
+  set($("btn-back"), back)
+  set($("btn-next"), next)
+  set($("btn-cancel"), cancel)
+  set($("btn-uninstall"), uninstall)
 }
 
-export function bitacora(texto, clase) {
-  const caja = $("bitacora")
-  const linea = el("div", clase, texto)
-  caja.appendChild(linea)
-  // Solo se autodesplaza si ya estaba abajo: si alguien subió a leer un aviso,
-  // saltar al final le arrebata la lectura.
-  const pegado = caja.scrollHeight - caja.scrollTop - caja.clientHeight < 40
-  if (pegado) caja.scrollTop = caja.scrollHeight
+export function log(text, className) {
+  const box = $("log")
+  box.appendChild(el("div", className, text))
+  // It only auto-scrolls if it was already at the bottom: if somebody scrolled
+  // up to read a warning, jumping to the end snatches it away from them.
+  const pinned = box.scrollHeight - box.scrollTop - box.clientHeight < 40
+  if (pinned) box.scrollTop = box.scrollHeight
 }
 
-export function progreso(pct, fase) {
-  $("barra-relleno").style.width = `${pct}%`
-  $("progreso-pct").textContent = `${pct}%`
-  if (fase) $("progreso-fase").textContent = fase
+export function progress(pct, phase) {
+  $("bar-fill").style.width = `${pct}%`
+  $("progress-pct").textContent = `${pct}%`
+  if (phase) $("progress-phase").textContent = phase
 }
 
-/** Bytes a algo que se pueda leer de un vistazo. */
+/** Bytes into something readable at a glance. */
 export function mb(bytes) {
   if (!bytes) return null
   return `${(bytes / 1048576).toFixed(1)} MB`
 }
 
-export function fecha(epochSegundos) {
-  const n = Number(epochSegundos)
+export function date(epochSeconds) {
+  const n = Number(epochSeconds)
   if (!Number.isFinite(n) || n <= 0) return null
   return new Date(n * 1000).toLocaleString()
 }

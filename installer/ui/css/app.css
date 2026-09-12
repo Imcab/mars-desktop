@@ -1,13 +1,13 @@
 /* =========================================================================
-   MARS Installer — hoja de estilo única.
+   MARS Installer — single stylesheet.
 
-   Un instalador se ve una vez cada varios meses: tiene que explicarse solo.
-   De ahí la forma clásica de asistente —banda de marca arriba, una pantalla a
-   la vez, botones de avance abajo a la derecha— en vez de algo más moderno que
-   haya que aprender.
+   An installer is seen once every few months: it has to explain itself. Hence
+   the classic wizard shape — brand band on top, one screen at a time, forward
+   buttons at the bottom right — instead of something more modern that would
+   have to be learned.
 
-   La paleta sale de tokens.css, que es copia literal de la de mars-desktop:
-   el instalador tiene que verse como el programa que instala.
+   The palette comes from tokens.css, a literal copy of mars-desktop's: the
+   installer has to look like the program it installs.
    ========================================================================= */
 
 * { box-sizing: border-box; }
@@ -20,17 +20,17 @@ html, body {
   font-size: 13px;
   color: var(--text-primary);
   background: var(--bg-app);
-  /* Un instalador no es un documento: seleccionar texto acá solo produce
-     selecciones azules accidentales al arrastrar la ventana. */
+  /* An installer is not a document: selecting text here only produces
+     accidental blue selections while dragging the window. */
   user-select: none;
   cursor: default;
 }
 
 #app { display: flex; flex-direction: column; height: 100%; }
 
-/* --- Banda de marca ----------------------------------------------------- */
+/* --- Brand band --------------------------------------------------------- */
 
-.marca {
+.brand {
   display: flex;
   align-items: center;
   gap: 14px;
@@ -40,19 +40,19 @@ html, body {
   border-bottom: 1px solid #14151a;
   box-shadow: inset 0 1px 0 #55565e;
 }
-.marca img { height: 28px; object-fit: contain; }
-.marca .divisor { width: 1px; height: 24px; background: #55565e; }
-.marca .titulo { font-size: 12px; color: var(--text-menubar); letter-spacing: 0.3px; }
-.marca .sub {
+.brand img { height: 28px; object-fit: contain; }
+.brand .divider { width: 1px; height: 24px; background: #55565e; }
+.brand .title { font-size: 12px; color: var(--text-menubar); letter-spacing: 0.3px; }
+.brand .sub {
   font-size: 10px;
   margin-top: 2px;
   font-family: var(--font-mono);
   color: var(--text-menubar-dim);
 }
 
-/* --- Cuerpo ------------------------------------------------------------- */
+/* --- Content ------------------------------------------------------------ */
 
-.cuerpo {
+.body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -60,17 +60,17 @@ html, body {
   background: var(--bg-page);
 }
 
-.paso { display: none; }
-.paso.activo { display: block; }
+.step { display: none; }
+.step.active { display: block; }
 
 h1 { font-size: 17px; font-weight: 600; margin: 0 0 4px; }
 .lede { font-size: 12px; color: var(--text-muted); margin: 0 0 16px; line-height: 1.5; }
 
-/* --- Tarjetas de edición ------------------------------------------------ */
+/* --- Edition cards ------------------------------------------------------ */
 
-.ediciones { display: flex; flex-direction: column; gap: 10px; }
+.editions { display: flex; flex-direction: column; gap: 10px; }
 
-.edicion {
+.edition {
   display: grid;
   grid-template-columns: 20px 1fr;
   gap: 12px;
@@ -81,30 +81,30 @@ h1 { font-size: 17px; font-weight: 600; margin: 0 0 4px; }
   cursor: pointer;
   transition: border-color 0.12s, background 0.12s;
 }
-.edicion:hover { background: var(--bg-page); border-color: var(--border-dark); }
-.edicion.elegida {
+.edition:hover { background: var(--bg-page); border-color: var(--border-dark); }
+.edition.chosen {
   border-color: var(--mars-accent);
   background: var(--toolbar-active-bg);
 }
-.edicion .radio {
+.edition .radio {
   width: 14px; height: 14px;
   margin-top: 2px;
   border-radius: 50%;
   border: 1px solid var(--border-dark);
   background: var(--bg-input);
 }
-.edicion.elegida .radio {
+.edition.chosen .radio {
   border-color: var(--mars-accent);
-  /* El punto interior se dibuja con el borde para no meter un <span> más. */
+  /* The inner dot is drawn with the border so there is no extra <span>. */
   border-width: 4px;
 }
-.edicion .nombre { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
-.edicion .desc { font-size: 11.5px; color: var(--text-muted); margin-top: 3px; line-height: 1.5; }
-.edicion ul { margin: 7px 0 0; padding-left: 16px; font-size: 11.5px; color: var(--text-secondary); line-height: 1.7; }
-.edicion li.no { color: var(--text-light); }
-.edicion li.no::marker { content: "− "; }
+.edition .name { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.edition .desc { font-size: 11.5px; color: var(--text-muted); margin-top: 3px; line-height: 1.5; }
+.edition ul { margin: 7px 0 0; padding-left: 16px; font-size: 11.5px; color: var(--text-secondary); line-height: 1.7; }
+.edition li.no { color: var(--text-light); }
+.edition li.no::marker { content: "− "; }
 
-.etiqueta {
+.tag {
   font-size: 9.5px;
   font-weight: 600;
   letter-spacing: 0.5px;
@@ -115,10 +115,10 @@ h1 { font-size: 17px; font-weight: 600; margin: 0 0 4px; }
   color: var(--status-success);
 }
 
-/* --- Campos ------------------------------------------------------------- */
+/* --- Fields ------------------------------------------------------------- */
 
-.campo { margin-top: 18px; }
-.campo > label {
+.field { margin-top: 18px; }
+.field > label {
   display: block;
   font-size: 10.5px;
   text-transform: uppercase;
@@ -126,8 +126,8 @@ h1 { font-size: 17px; font-weight: 600; margin: 0 0 4px; }
   color: var(--text-muted);
   margin-bottom: 5px;
 }
-.ruta { display: flex; gap: 6px; }
-.ruta input {
+.path { display: flex; gap: 6px; }
+.path input {
   flex: 1;
   font-family: var(--font-mono);
   font-size: 11.5px;
@@ -140,9 +140,9 @@ h1 { font-size: 17px; font-weight: 600; margin: 0 0 4px; }
 }
 .check { display: flex; align-items: center; gap: 7px; font-size: 12px; margin-top: 12px; cursor: pointer; }
 
-/* --- Botones ------------------------------------------------------------ */
+/* --- Buttons ------------------------------------------------------------ */
 
-.pie {
+.footer {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -151,7 +151,7 @@ h1 { font-size: 17px; font-weight: 600; margin: 0 0 4px; }
   background: var(--bg-toolbar);
   border-top: 1px solid var(--border-main);
 }
-.pie .relleno { flex: 1; }
+.footer .spacer { flex: 1; }
 
 button {
   font-family: inherit;
@@ -166,21 +166,21 @@ button {
 button:hover:not(:disabled) { background: var(--btn-classic-bg-hover); }
 button:active:not(:disabled) { background: var(--btn-classic-bg-active); }
 button:disabled { color: var(--btn-classic-text-disabled); cursor: default; }
-button.primario {
+button.primary {
   background: var(--mars-red);
   border-color: #8e3232;
   color: #fff;
   font-weight: 500;
 }
-button.primario:hover:not(:disabled) { background: #b84545; }
-button.primario:disabled { background: #c9a0a0; border-color: #c9a0a0; color: #fff; }
-button.peligro { color: var(--status-error); border-color: #c09a9a; }
-button.plano { border-color: transparent; background: transparent; }
-button.plano:hover:not(:disabled) { background: var(--btn-classic-bg); border-color: var(--btn-classic-border); }
+button.primary:hover:not(:disabled) { background: #b84545; }
+button.primary:disabled { background: #c9a0a0; border-color: #c9a0a0; color: #fff; }
+button.danger { color: var(--status-error); border-color: #c09a9a; }
+button.flat { border-color: transparent; background: transparent; }
+button.flat:hover:not(:disabled) { background: var(--btn-classic-bg); border-color: var(--btn-classic-border); }
 
-/* --- Progreso ----------------------------------------------------------- */
+/* --- Progress ----------------------------------------------------------- */
 
-.barra {
+.bar {
   height: 8px;
   border-radius: 4px;
   background: var(--bg-dark);
@@ -188,16 +188,16 @@ button.plano:hover:not(:disabled) { background: var(--btn-classic-bg); border-co
   overflow: hidden;
   margin: 16px 0 8px;
 }
-.barra .relleno {
+.bar .fill {
   height: 100%;
   width: 0%;
   background: var(--mars-accent);
   transition: width 0.2s ease;
 }
 .pct { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
-.fase { font-size: 12.5px; margin-top: 2px; }
+.phase { font-size: 12.5px; margin-top: 2px; }
 
-.bitacora {
+.log {
   margin-top: 14px;
   height: 190px;
   overflow-y: auto;
@@ -211,13 +211,13 @@ button.plano:hover:not(:disabled) { background: var(--btn-classic-bg); border-co
   color: var(--text-secondary);
   user-select: text;
 }
-.bitacora .aviso { color: var(--status-warning); }
-.bitacora .error { color: var(--status-error); }
-.bitacora .ok { color: var(--status-success); }
+.log .warn { color: var(--status-warning); }
+.log .error { color: var(--status-error); }
+.log .ok { color: var(--status-success); }
 
-/* --- Cuadros de estado -------------------------------------------------- */
+/* --- Status boxes ------------------------------------------------------- */
 
-.aviso-caja, .error-caja, .ok-caja {
+.warn-box, .error-box, .ok-box, .notice-box {
   padding: 10px 12px;
   border-radius: 3px;
   font-size: 12px;
@@ -226,17 +226,17 @@ button.plano:hover:not(:disabled) { background: var(--btn-classic-bg); border-co
   white-space: pre-wrap;
   user-select: text;
 }
-.aviso-caja { background: var(--status-warning-bg); border: 1px solid var(--status-warning-border); color: #7a4f08; }
-.error-caja { background: var(--status-error-bg); border: 1px solid var(--status-error-border); color: #8f1515; }
-.ok-caja { background: var(--status-success-bg); border: 1px solid rgba(31,122,31,0.3); color: #16601a; }
+.warn-box, .notice-box { background: var(--status-warning-bg); border: 1px solid var(--status-warning-border); color: #7a4f08; }
+.error-box { background: var(--status-error-bg); border: 1px solid var(--status-error-border); color: #8f1515; }
+.ok-box { background: var(--status-success-bg); border: 1px solid rgba(31,122,31,0.3); color: #16601a; }
 
-.resumen {
+.summary {
   margin-top: 16px;
   border: 1px solid var(--border-main);
   border-radius: 3px;
   overflow: hidden;
 }
-.resumen .fila {
+.summary .row {
   display: grid;
   grid-template-columns: 165px 1fr;
   gap: 10px;
@@ -245,12 +245,12 @@ button.plano:hover:not(:disabled) { background: var(--btn-classic-bg); border-co
   border-bottom: 1px solid var(--border-light);
   background: var(--bg-page);
 }
-.resumen .fila:last-child { border-bottom: none; }
-.resumen .fila:nth-child(even) { background: var(--bg-panel); }
-.resumen .k { color: var(--text-muted); }
-.resumen .v { font-family: var(--font-mono); font-size: 11.5px; word-break: break-all; user-select: text; }
+.summary .row:last-child { border-bottom: none; }
+.summary .row:nth-child(even) { background: var(--bg-panel); }
+.summary .k { color: var(--text-muted); }
+.summary .v { font-family: var(--font-mono); font-size: 11.5px; word-break: break-all; user-select: text; }
 
-.notas {
+.notes {
   margin-top: 12px;
   max-height: 110px;
   overflow-y: auto;
@@ -265,21 +265,21 @@ button.plano:hover:not(:disabled) { background: var(--btn-classic-bg); border-co
   user-select: text;
 }
 
-/* Un enlace que abre el navegador, no una navegación interna. */
-.enlace {
+/* A link that opens the browser, not an in-app navigation. */
+.link {
   color: var(--mars-accent);
   text-decoration: underline;
   cursor: pointer;
 }
 
-.girando {
+.spinner {
   display: inline-block;
   width: 11px; height: 11px;
   border: 2px solid var(--border-dark);
   border-top-color: var(--mars-accent);
   border-radius: 50%;
-  animation: gira 0.7s linear infinite;
+  animation: spin 0.7s linear infinite;
   vertical-align: -1px;
   margin-right: 7px;
 }
-@keyframes gira { to { transform: rotate(360deg); } }
+@keyframes spin { to { transform: rotate(360deg); } }

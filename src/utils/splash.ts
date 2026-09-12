@@ -32,11 +32,11 @@ const TODOS_LOS_PASOS = [
 export type SplashStepKey = (typeof TODOS_LOS_PASOS)[number][0]
 
 /**
- * Los pasos, en el orden real en que ocurren. La clave la usa SplashProgress.
+ * The steps, in the real order they happen. SplashProgress uses the key.
  *
- * La edición Tools no tiene proyecto que localizar, así que ese paso no se
- * lista: dejarlo saldría siempre en gris y el porcentaje avanzaría a saltos
- * por un paso que no existe.
+ * The Tools edition has no project to locate, so that step is not listed:
+ * leaving it in would always show grey and the percentage would jump for a step
+ * that does not exist.
  */
 export const SPLASH_STEPS: readonly (readonly [SplashStepKey, string])[] =
   MARS_ENABLED ? TODOS_LOS_PASOS : TODOS_LOS_PASOS.filter(([k]) => k !== "project")

@@ -53,8 +53,8 @@ export default function MenuBar({
 
   const isConnected = connection !== "disconnected"
 
-  // Una lista de @mars se convierte en entradas de menu seguidas de un
-  // separador; vacia no aporta nada, ni siquiera el separador.
+  // A list from @mars becomes menu entries followed by a separator; an empty
+  // one contributes nothing, not even the separator.
   const marsMenuItems = (items: readonly { label: string; page: Page }[]): MenuEntry[] =>
     items.length === 0 ? [] : [
       ...items.map(item => ({ label: item.label, action: () => { navigate(item.page); close() } })),
@@ -65,8 +65,8 @@ export default function MenuBar({
     {
       label: "File",
       items: [
-        // Un proyecto es un proyecto de MARS: en la edicion Tools estas dos
-        // entradas y su separador no existen.
+        // A project is a MARS project: in the Tools edition these two entries
+        // and their separator do not exist.
         ...(MARS_ENABLED ? [
           { label: "New project", action: () => { navigate("creator"); close() } },
           { label: "Open project", action: () => { onOpenProject(); close() } },
@@ -136,9 +136,9 @@ export default function MenuBar({
     {
       label: "Tools",
       items: [
-        // Las entradas que dependen del framework salen de @mars, que en la
-        // edicion Tools exporta listas vacias: aca no hay condicionales
-        // sueltos que se puedan olvidar de actualizar.
+        // The entries that depend on the framework come from @mars, which in the
+        // Tools edition exports empty lists: there are no loose conditionals
+        // here that somebody could forget to update.
         ...marsMenuItems([...PROJECT_ITEMS, ...MODULE_ITEMS]),
         ...marsMenuItems(CONFIG_ITEMS),
         // Estas páginas existían pero no estaban en ningún menú: solo se

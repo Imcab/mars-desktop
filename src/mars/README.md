@@ -1,45 +1,45 @@
-# El bloque MARS
+# The MARS block
 
-MARS Desktop se compila en dos ediciones:
+MARS Desktop ships in two editions:
 
-| Edición | Qué trae | Para quién |
+| Edition | What it has | Who it is for |
 |---|---|---|
-| **Full** | Todo: NetworkTables + el framework MARS (proyectos, paquetes, manifiesto, wizard, features, estado de subsistemas, watchdog) + lanzador de MARS Simulation Studio | Equipos que usan MARS |
-| **Tools** | Solo el dashboard: NetworkTables, visualizadores 2D/3D, swerve, mechanism, telemetría, gráficas, ecuaciones, SysId, loop timing, bandwidth, consola, preferences, logs `.wpilog` | Equipos que quieren la herramienta sin adoptar el framework |
+| **Full** | Everything: NetworkTables + the MARS framework (projects, packages, manifest, wizard, features, subsystem status, watchdog) + the MARS Simulation Studio launcher | Teams using MARS |
+| **Tools** | Just the dashboard: NetworkTables, 2D/3D visualisers, swerve, mechanisms, telemetry, plots, equations, SysId, loop timing, bandwidth, console, preferences, `.wpilog` files | Teams who want the tool without adopting the framework |
 
-## Cómo se quita MARS de verdad
+## How MARS is actually removed
 
-No es un `if` en runtime. Tools **no compila** el código de MARS:
+It is not a runtime `if`. Tools does **not compile** the MARS code:
 
-- **Front**: todo lo que depende del framework se importa desde un único
-  módulo, `@mars`. El alias de `vite.config.ts` lo resuelve a
-  `src/mars/index.tsx` (Full) o `src/mars/index.tools.tsx` (Tools). El stub no
-  importa ninguna página, así que esas páginas se quedan sin importadores y
-  rollup no las mete en el bundle.
-- **Rust**: los módulos `feature_gen`, `subsystem_gen`, `source_map`,
-  `simlauncher` y los comandos de proyecto van detrás de la feature `mars` de
-  Cargo (activada por defecto). Tools se construye con `--no-default-features`
-  y esos `#[tauri::command]` ni existen en el binario.
+- **Front end**: everything that depends on the framework is imported from a
+  single module, `@mars`. The alias in `vite.config.ts` resolves it to
+  `src/mars/index.tsx` (Full) or `src/mars/index.tools.tsx` (Tools). The stub
+  imports no pages, so those pages end up with no importers and rollup keeps
+  them out of the bundle.
+- **Rust**: the `feature_gen`, `subsystem_gen`, `source_map` and `simlauncher`
+  modules, plus the project commands, sit behind cargo's `mars` feature (on by
+  default). Tools is built with `--no-default-features` and those
+  `#[tauri::command]`s do not even exist in the binary.
 
-Comprobarlo:
+To check it:
 
 ```bash
 MARS_EDITION=tools npm run build
-grep -rl "MarsFeature" dist/assets   # no debe devolver nada
+grep -rl "MarsFeature" dist/assets   # must return nothing
 ```
 
-## Agregar una función que dependa de MARS
+## Adding a feature that depends on MARS
 
-1. La página va en `src/pages/`, como cualquier otra.
-2. Se importa y se enruta **solo** en `src/mars/index.tsx`.
-3. Su entrada de navegación se agrega a `PROJECT_ITEMS`, `MODULE_ITEMS` o
-   `CONFIG_ITEMS` del mismo archivo; el sidebar, el menú y la pantalla de
-   inicio las leen de ahí y no tienen listas propias.
-4. Si necesita Rust, el módulo va bajo `#[cfg(feature = "mars")]`.
+1. The page goes in `src/pages/`, like any other.
+2. It is imported and routed **only** in `src/mars/index.tsx`.
+3. Its navigation entry is added to `PROJECT_ITEMS`, `MODULE_ITEMS` or
+   `CONFIG_ITEMS` in the same file; the sidebar, the menu and the welcome screen
+   read from there and keep no lists of their own.
+4. If it needs Rust, the module goes behind `#[cfg(feature = "mars")]`.
 
-Si la función solo usa NetworkTables, **no va acá**: va directo en `App.tsx`,
-que es lo que comparten las dos ediciones.
+If the feature only uses NetworkTables, **it does not belong here**: it goes
+straight into `App.tsx`, which is what both editions share.
 
-El contrato entre las dos implementaciones está en `types.ts`
-(`MarsSurface`), y cada archivo se asigna a sí mismo a ese tipo: si una
-edición se desvía, falla `tsc`, no la app abierta.
+The contract between the two implementations is in `types.ts` (`MarsSurface`),
+and each file assigns itself to that type: if one edition drifts, `tsc` fails
+rather than the running app.
