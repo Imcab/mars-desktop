@@ -12,7 +12,7 @@
 name = "mars-sim-app"
 # Acompana a MSS_VERSION de ui/js/constants.js: esta es la que acaba en el
 # ejecutable y en el instalador; aquella, la que se ve en la interfaz.
-version = "0.9.4"
+version = "0.9.5"
 edition = "2021"
 
 # See the note in src-tauri/Cargo.toml: without `custom-protocol` the binary

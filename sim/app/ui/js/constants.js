@@ -11,8 +11,13 @@
 //
 // Si se toca, hay que tocar también sim/app/Cargo.toml y
 // sim/app/tauri.conf.json: esos dos los lee el instalador, no la interfaz.
+// `scripts/sync-version.mjs` comprueba que los tres digan lo mismo y el
+// workflow lo corre antes de empaquetar, así que una versión que se quede
+// atrás rompe el build en vez de llegar a una instalación --- que es como se
+// llega a mirar una pantalla que dice 0.9.4 sin saber si es la vieja o es que
+// el cambio no funcionó.
 
-export const MSS_VERSION = "0.9.4"
+export const MSS_VERSION = "0.9.5"
 
 /** Como se escribe cuando va sola, sin la palabra "version" al lado. */
 export const MSS_VERSION_LABEL = `v${MSS_VERSION}`
