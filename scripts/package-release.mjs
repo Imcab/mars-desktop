@@ -27,11 +27,29 @@ const salida = join(raiz, "release")
 const args = process.argv.slice(2)
 const sinStudio = args.includes("--sin-studio")
 const soloEdicion = args.includes("--solo") ? args[args.indexOf("--solo") + 1] : null
+// Cruzar de arquitectura SOLO tiene sentido en macOS, donde las dos conviven
+// en la misma plataforma y el SDK del sistema es universal. Windows y Linux se
+// construyen cada uno en el suyo.
+const arcoPedido = args.includes("--arch") ? args[args.indexOf("--arch") + 1] : null
 
 // --- Plataforma -------------------------------------------------------------
 
 const SO = process.platform === "win32" ? "windows" : process.platform === "darwin" ? "macos" : "linux"
-const ARCH = process.arch === "arm64" ? "aarch64" : "x86_64"
+const ARCH_NATIVA = process.arch === "arm64" ? "aarch64" : "x86_64"
+const ARCH = arcoPedido ?? ARCH_NATIVA
+if (ARCH !== "x86_64" && ARCH !== "aarch64") {
+  console.error(`Arquitectura desconocida: ${ARCH}`)
+  process.exit(2)
+}
+if (ARCH !== ARCH_NATIVA && SO !== "macos") {
+  console.error(`Solo se puede cruzar de arquitectura en macOS, no en ${SO}.`)
+  process.exit(2)
+}
+// `null` cuando se construye para la arquitectura nativa: pasar --target igual
+// mandaria la salida a target/<triple>/release y obligaria a recompilar lo que
+// ya estaba compilado.
+const TRIPLE = ARCH === ARCH_NATIVA ? null : `${ARCH}-apple-darwin`
+const SUBDIR = TRIPLE ? `${TRIPLE}/release` : "release"
 const EXE = SO === "windows" ? ".exe" : ""
 const EXT = SO === "windows" ? "zip" : "tar.gz"
 // El Studio arrastra Gazebo, que hoy solo se construye en Windows y Linux.
@@ -82,7 +100,11 @@ function empaquetar(nombre, archivos) {
 
 // --- Construcción -----------------------------------------------------------
 
-console.log(`\nMARS ${version} — empaquetando para ${SO} ${ARCH}\n${"=".repeat(46)}`)
+console.log(
+  `\nMARS ${version} — empaquetando para ${SO} ${ARCH}` +
+    (TRIPLE ? ` (cruzado desde ${ARCH_NATIVA})` : "") +
+    `\n${"=".repeat(46)}`,
+)
 correr("node", ["scripts/sync-version.mjs"])
 
 rmSync(salida, { recursive: true, force: true })
@@ -114,9 +136,10 @@ for (const edicion of ediciones) {
     "--features", "custom-protocol",
   ]
   if (edicion === "tools") cargo.push("--no-default-features")
+  if (TRIPLE) cargo.push("--target", TRIPLE)
   correr("cargo", cargo)
 
-  const binario = join(raiz, "src-tauri/target/release", `mars-desktop${EXE}`)
+  const binario = join(raiz, "src-tauri/target", SUBDIR, `mars-desktop${EXE}`)
   if (!existsSync(binario)) {
     console.error(`cargo no dejó ${binario}`)
     process.exit(1)
@@ -126,8 +149,10 @@ for (const edicion of ediciones) {
 
 if (HAY_STUDIO && !sinStudio) {
   console.log("\n--- MARS Simulation Studio ---")
-  correr("cargo", ["build", "--release", "--manifest-path", "sim/app/Cargo.toml"])
-  const binario = join(raiz, "sim/app/target/release", `mars-sim-app${EXE}`)
+  const cargoStudio = ["build", "--release", "--manifest-path", "sim/app/Cargo.toml"]
+  if (TRIPLE) cargoStudio.push("--target", TRIPLE)
+  correr("cargo", cargoStudio)
+  const binario = join(raiz, "sim/app/target", SUBDIR, `mars-sim-app${EXE}`)
   if (existsSync(binario)) {
     empaquetar(`mars-simulation-studio-${SO}-${ARCH}.${EXT}`, [binario, icono])
   } else {
@@ -142,8 +167,10 @@ if (HAY_STUDIO && !sinStudio) {
 // Va suelto, sin comprimir: es lo que la gente descarga y ejecuta. Un zip de
 // un solo .exe solo agrega un paso.
 console.log("\n--- MARS Installer ---")
-correr("cargo", ["build", "--release", "--manifest-path", "installer/Cargo.toml"])
-const instalador = join(raiz, "installer/target/release", `mars-installer${EXE}`)
+const cargoInst = ["build", "--release", "--manifest-path", "installer/Cargo.toml"]
+if (TRIPLE) cargoInst.push("--target", TRIPLE)
+correr("cargo", cargoInst)
+const instalador = join(raiz, "installer/target", SUBDIR, `mars-installer${EXE}`)
 if (existsSync(instalador)) {
   const nombre =
     SO === "windows" ? "MARS-Installer.exe" : `MARS-Installer-${SO}-${ARCH}`

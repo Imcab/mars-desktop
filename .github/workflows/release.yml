@@ -39,10 +39,13 @@ jobs:
           # al revés sí funciona.
           - nombre: Linux x86_64
             runner: ubuntu-22.04
-          - nombre: macOS arm64
+          # Un solo runner de macOS produce las DOS arquitecturas: el SDK del
+          # sistema es universal y Rust cruza entre ellas con un `--target`.
+          # Antes habia un job en `macos-13` para Intel, pero ese runner ya no
+          # existe: el job se quedaba en cola indefinidamente y, como el job que
+          # publica depende de TODOS los de la matriz, la release nunca salia.
+          - nombre: macOS (arm64 + x86_64)
             runner: macos-latest
-          - nombre: macOS x86_64
-            runner: macos-13
 
     steps:
       - uses: actions/checkout@v4
@@ -92,6 +95,15 @@ jobs:
 
       - name: Construir y empaquetar
         run: node scripts/package-release.mjs
+
+      # La segunda arquitectura de macOS, cruzada desde la misma maquina. El
+      # `--arch` deja los paquetes con el nombre correcto; el instalador elige
+      # por su cuenta cual le toca.
+      - name: Empaquetar tambien macOS x86_64
+        if: runner.os == 'macOS'
+        run: |
+          rustup target add x86_64-apple-darwin
+          node scripts/package-release.mjs --arch x86_64
 
       - uses: actions/upload-artifact@v4
         with:
