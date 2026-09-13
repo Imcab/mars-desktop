@@ -18,6 +18,11 @@ mod simlauncher;
 mod source_map;
 #[cfg(feature = "mars")]
 mod subsystem_gen;
+// Las plantillas viajan dentro del binario y solo las usan create_mars_project
+// y el wizard de features, los dos detras de `mars`: en la edicion Tools ni se
+// compilan ni ocupan los 220 KB.
+#[cfg(feature = "mars")]
+mod templates;
 
 use std::fs;
 use std::path::PathBuf;
@@ -211,21 +216,19 @@ fn write_mars_settings(settings: MarsSettings) -> Result<(), String> {
 async fn create_mars_project(project_name: String, workspace_path: String, team_number: String) -> Result<String, String> {
     let target_path = PathBuf::from(&workspace_path).join(&project_name);
 
-    let status = Command::new("git")
-        .arg("clone")
-        .arg("https://github.com/STZ-Robotics/MarsTemplate.git")
-        .arg(&target_path)
-        .status()
-        .map_err(|e| format!("Error at executing git: {}", e))?;
-
-    if !status.success() {
-        return Err("Failed at creating a MARS Template, check your connection".into());
+    // `git clone` refused to write into a folder that already had something in
+    // it, and that refusal was doing real work: without it, creating a project
+    // with a name that already exists writes over whatever is there. The check
+    // has to be explicit now that the files come from inside the binary.
+    if target_path.exists()
+        && fs::read_dir(&target_path).map(|mut d| d.next().is_some()).unwrap_or(false)
+    {
+        return Err(format!("{} already exists and is not empty.", target_path.display()));
     }
 
-    let git_folder = target_path.join(".git");
-    if git_folder.exists() {
-        let _ = fs::remove_dir_all(&git_folder);
-    }
+    // The template is embedded (see templates.rs): no clone, so no network, no
+    // git, and no .git to delete afterwards.
+    templates::extract(templates::PROJECT, &target_path)?;
 
     if let Ok(team_num) = team_number.parse::<u32>() {
         let wpilib_prefs = target_path.join(".wpilib").join("wpilib_preferences.json");

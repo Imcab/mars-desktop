@@ -218,7 +218,7 @@ export default function FeatureWizardPage({ projectPath }: Props) {
         <div style={{ fontSize: 11, color: "var(--text-muted)", letterSpacing: 0.5, textTransform: "uppercase" }}>Workspace Setup</div>
         <div style={{ fontSize: 18, fontWeight: 600, color: "var(--text-primary)" }}>Create Feature</div>
         <div style={{ fontSize: 11, color: "var(--text-light)", marginTop: 2 }}>
-          Clone MARS-Feature-Template and wire it to your team, your dependencies and your GitHub Pages
+          Set up a feature repository wired to your team, your dependencies and your GitHub Pages
         </div>
       </div>
 

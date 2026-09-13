@@ -49,6 +49,11 @@ npm run build                                   # tsc + vite
 | `src-tauri/` | The backend: our own NT4 client, `.wpilog` reading and writing, 3D assets, Java code generators. |
 | `public/` | Static assets vite serves as-is: field images, 3D field models, icons. |
 
+The project and feature scaffolds are **inside the binary**, not cloned: see
+[`../templates/README.md`](../templates/README.md) for why, and
+`src-tauri/build.rs` plus `src-tauri/src/templates.rs` for how. Editing a
+template is editing `templates/` and rebuilding.
+
 The button that opens the Simulation Studio is `src-tauri/src/simlauncher.rs`,
 and it is all mars-desktop knows about the simulation: it looks for the Studio's
 executable next to its own (an installation) or in

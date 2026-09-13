@@ -32,6 +32,7 @@ uninstalls.
 | [`lib/`](lib/README.md) | **MARS**, the FRC Java library — the vendordep teams install. Its own version, its own release cycle, and the only thing here whose output is consumed by people who never clone this repository. |
 | [`desktop/`](desktop/README.md) | **MARS Desktop**: the NetworkTables dashboard. React + TypeScript over a Rust/Tauri backend. This is what most people mean by "MARS". |
 | [`simulationstudio/`](simulationstudio/app/README.md) | **MARS Simulation Studio** and the Gazebo-based simulation engine. A separate product with its own version and its own life cycle. |
+| [`templates/`](templates/README.md) | The project and feature scaffolds the dashboard writes. They ship inside its binary, so creating a project needs neither network nor git. |
 | [`installer/`](installer/README.md) | **MARS Installer**: the app that installs, updates and uninstalls the ecosystem. |
 | [`docs/`](docs/) | The documentation site (MkDocs Material). |
 | [`scripts/`](scripts/) | The only things that know about more than one at once: release packaging, version syncing, the vendordep check. |

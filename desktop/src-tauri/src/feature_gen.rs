@@ -1,8 +1,8 @@
 // feature_gen.rs
-// Generador de paquetes (features) de MARS a partir de MARS-Feature-Template.
+// Generador de paquetes (features) de MARS a partir de la plantilla de feature.
 //
-// Es la hermana de `create_mars_project`: clona una plantilla, la desprende de
-// su .git y la reescribe con los datos del wizard. La diferencia es que acá
+// Es la hermana de `create_mars_project`: extrae una plantilla y la reescribe
+// con los datos del wizard. La diferencia es que acá
 // hay que tocar cuatro archivos coordinados entre si -- MarsFeature.json,
 // build.gradle, settings.gradle y el arbol de paquetes java -- porque el
 // groupId aparece en los cuatro y si uno queda desfasado el gradle no compila.
@@ -11,8 +11,6 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-
-const TEMPLATE_REPO: &str = "https://github.com/STZ-Robotics/MARS-Feature-Template.git";
 
 /// Una dependencia elegida en el wizard. `artifacts` ya viene con las
 /// coordenadas gradle resueltas ("com.ctre.phoenix6:wpiapi-java:26.1.1"); la
@@ -361,7 +359,7 @@ fn readme_source(config: &FeatureWizardConfig, pages: Option<&str>) -> String {
     ));
     out.push_str("- `generated/FeatureConstants.java` — rewritten by Gradle on every `compileJava`; don't edit it.\n");
     out.push_str("- `MarsFeature.json` — the descriptor MARS reads. `version` here drives both the Maven artifact and the installer.\n");
-    out.push_str("\n---\n\nGenerated with the MARS Desktop feature wizard from [MARS-Feature-Template](https://github.com/STZ-Robotics/MARS-Feature-Template).\n");
+    out.push_str("\n---\n\nGenerated with the MARS Desktop feature wizard from the template in [Mars-frc](https://github.com/STZ-Robotics/Mars-frc/tree/main/templates/feature).\n");
     out
 }
 
@@ -415,20 +413,11 @@ fn scaffold_feature(config: FeatureWizardConfig) -> Result<CreateFeatureResult, 
         return Err(format!("{} already exists and is not empty.", target.display()));
     }
 
-    // 1. Plantilla. --depth 1 porque el .git se borra igual.
-    let status = Command::new("git")
-        .args(["clone", "--depth", "1", TEMPLATE_REPO])
-        .arg(&target)
-        .status()
-        .map_err(|e| format!("Could not run git: {}", e))?;
-    if !status.success() {
-        return Err("Failed to clone MARS-Feature-Template. Check your connection.".into());
-    }
-
-    let git_folder = target.join(".git");
-    if git_folder.exists() {
-        let _ = fs::remove_dir_all(&git_folder);
-    }
+    // 1. Plantilla. Viaja dentro del binario (ver templates.rs): antes se
+    //    clonaba con --depth 1 y se le borraba el .git acto seguido, que era
+    //    pagar una dependencia de red y del binario `git` para no usar nada del
+    //    historial.
+    crate::templates::extract(crate::templates::FEATURE, &target)?;
 
     // 2. Descriptor.
     let pages = pages_base(&config);
