@@ -1,0 +1,21 @@
+{
+  "featureId": "TemplateFeature",
+  "name": "Nombre de tu Feature",
+  "version": "1.0.0",
+  "groupId": "com.tu.equipo",
+  "author": "Tu Equipo",
+  "description": "Descripción de lo que hace tu nodo.",
+  "marsCoreRequired": ">=1.6.0",
+  "forgeMiniRequired": ">=1.1.0",
+  "mavenUrls": [
+    "https://TU-USUARIO.github.io/TU-REPO/maven/"
+  ],
+  "javaDependencies": [
+    {
+      "groupId": "com.tu.equipo",
+      "artifactId": "TemplateFeature",
+      "version": "1.0.0",
+      "isProcessor": false
+    }
+  ]
+}
