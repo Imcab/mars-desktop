@@ -78,10 +78,11 @@ repository has not finished its job, and the order of what remains matters.
 **1. Deploy this site first.** Both new URLs have to answer before anything
 points at them.
 
-**2. Cut a bridge release.** It has to carry a version number **higher than
-1.6.6**. WPILib's "Check for updates" compares versions: an identical one is
-reported as already up to date and nobody migrates, no matter what else changed
-in the file. Publish it from here, so the new maven serves it.
+**2. Cut a bridge release.** Done: **1.6.7**, which is 1.6.6 with no code change
+at all — it exists only to carry a number. WPILib's "Check for updates" compares
+versions, so an identical one is reported as already up to date and migrates
+nobody, no matter what else changed in the file. That is the whole reason a
+URL-only migration still needs a release.
 
 **3. One last commit in the old repository**, replacing its `Mars.json` with:
 
@@ -89,7 +90,7 @@ in the file. Publish it from here, so the new maven serves it.
 {
   "fileName": "Mars.json",
   "name": "Mars",
-  "version": "<the bridge version>",
+  "version": "1.6.7",
   "frcYear": "2026",
   "uuid": "8b9c1d2e-3f4a-5b6c-7d8e-9f0a1b2c3d4e",
   "mavenUrls": [
@@ -98,7 +99,7 @@ in the file. Publish it from here, so the new maven serves it.
   ],
   "jsonUrl": "https://imcab.github.io/Mars-frc/Mars.json",
   "javaDependencies": [
-    { "groupId": "com.stzteam.mars", "artifactId": "Mars", "version": "<the bridge version>" },
+    { "groupId": "com.stzteam.mars", "artifactId": "Mars", "version": "1.6.7" },
     { "groupId": "com.stzteam.forgemini", "artifactId": "ForgeMini", "version": "1.1.2" }
   ],
   "cppDependencies": [],
@@ -106,10 +107,14 @@ in the file. Publish it from here, so the new maven serves it.
 }
 ```
 
-Same uuid, new `jsonUrl`, new maven. This file is the **only** channel that
-exists for telling an already-installed project that the library moved: a team
-updates once against the old URL and lands here permanently. Let its own
-`publish.yml` deploy it one final time.
+Same uuid, new `jsonUrl`, new maven — and note the old maven is deliberately
+**not** in the list: it will never carry 1.6.7, so leaving it in only buys a 404
+on every resolve. Its frozen copies of 1.6.0 … 1.6.6 keep serving the projects
+that never update, which is a different thing and needs no URL here.
+
+This file is the **only** channel that exists for telling an already-installed
+project that the library moved: a team updates once against the old URL and
+lands here permanently. Let its own `publish.yml` deploy it one final time.
 
 **4. Then archive it — do not delete it.** An archived repository keeps serving
 Pages read-only, so its frozen `maven/` (1.6.0 … 1.6.6) keeps resolving for
