@@ -7,6 +7,7 @@ import AlertBanner from "../components/common/AlertBanner"
 import Panel from "../components/common/Panel"
 import PropertyRow from "../components/common/PropertyRow"
 import { propertyInputStyle } from "../styles/pageForm"
+import { SUPPORTED_FEATURE_URLS } from "../utils/mars/supportedPackages"
 
 interface Props {
   projectName: string | null
@@ -23,10 +24,8 @@ interface MarsFeature {
 
 type CombinedFeature = MarsFeature & { isInstalled: boolean; installedVersion?: string }
 
-const REGISTRY_URL = "https://raw.githubusercontent.com/STZ-Robotics/Mars-marketplace/main/registry.json"
-
 export default function PackagePage({ projectName, projectPath }: Props) {
-  const [marketplaceData, setMarketplaceData] = useState<MarsFeature[]>([])
+  const [catalogData, setCatalogData] = useState<MarsFeature[]>([])
   const [installedData, setInstalledData] = useState<MarsFeature[]>([])
   const [loading, setLoading] = useState(true)
   const [registryError, setRegistryError] = useState<string | null>(null)
@@ -50,35 +49,32 @@ export default function PackagePage({ projectName, projectPath }: Props) {
       console.error("Error reading local packages:", e)
     }
 
-    try {
-      const registryRes = await fetch(REGISTRY_URL)
-      if (!registryRes.ok) throw new Error(`Registry responded with ${registryRes.status}`)
-      const registryJson = await registryRes.json()
-      const featureUrls: string[] = registryJson.verifiedFeatures || []
-
-      const fetchedFeatures: MarsFeature[] = []
-      const failedUrls: string[] = []
-      for (const url of featureUrls) {
-        try {
-          const featRes = await fetch(url)
-          if (featRes.ok) fetchedFeatures.push(await featRes.json())
-          else failedUrls.push(url)
-        } catch (e) {
-          failedUrls.push(url)
-        }
+    // La lista de features verificadas viaja con la app
+    // (`supported-packages.json`); de la red solo se bajan los descriptores,
+    // para que las versiones sean siempre las de upstream.
+    const fetchedFeatures: MarsFeature[] = []
+    const failedUrls: string[] = []
+    for (const url of SUPPORTED_FEATURE_URLS) {
+      try {
+        const featRes = await fetch(url)
+        if (featRes.ok) fetchedFeatures.push(await featRes.json())
+        else failedUrls.push(url)
+      } catch (e) {
+        console.error(`Error fetching feature descriptor ${url}:`, e)
+        failedUrls.push(url)
       }
-      setMarketplaceData(fetchedFeatures)
-      if (failedUrls.length > 0) {
-        setRegistryError(`${failedUrls.length} of ${featureUrls.length} marketplace entries failed to load.`)
-      }
-      setLastSynced(new Date())
-    } catch (error) {
-      console.error("Error loading marketplace registry:", error)
-      setRegistryError("Could not reach the MARS marketplace registry. Showing locally installed packages only.")
-      setMarketplaceData([])
-    } finally {
-      setLoading(false)
     }
+
+    setCatalogData(fetchedFeatures)
+    if (failedUrls.length > 0) {
+      setRegistryError(
+        failedUrls.length === SUPPORTED_FEATURE_URLS.length
+          ? "Could not reach any of the supported packages. Showing locally installed packages only."
+          : `${failedUrls.length} of ${SUPPORTED_FEATURE_URLS.length} supported packages failed to load.`,
+      )
+    }
+    setLastSynced(new Date())
+    setLoading(false)
   }, [projectPath])
 
   useEffect(() => { loadPackages() }, [loadPackages])
@@ -117,10 +113,10 @@ export default function PackagePage({ projectName, projectPath }: Props) {
     }
   }
 
-  // Combinación: local + marketplace, sin duplicados
+  // Combinación: local + catálogo verificado, sin duplicados
   const combined = useMemo(() => {
     const map = new Map<string, CombinedFeature>()
-    marketplaceData.forEach(p => map.set(p.featureId, { ...p, isInstalled: false }))
+    catalogData.forEach(p => map.set(p.featureId, { ...p, isInstalled: false }))
     installedData.forEach(p => {
       if (map.has(p.featureId)) {
         const existing = map.get(p.featureId)!
@@ -131,7 +127,7 @@ export default function PackagePage({ projectName, projectPath }: Props) {
       }
     })
     return Array.from(map.values())
-  }, [marketplaceData, installedData])
+  }, [catalogData, installedData])
 
   const filtered = useMemo(() => {
     if (searchQuery.trim() === "") return combined
@@ -176,7 +172,7 @@ export default function PackagePage({ projectName, projectPath }: Props) {
                 />
               </PropertyRow>
               <PropertyRow label="Installed"><span style={{ color: "var(--status-success)" }}>{installedData.length}</span></PropertyRow>
-              <PropertyRow label="Available"><span>{marketplaceData.length}</span></PropertyRow>
+              <PropertyRow label="Available"><span>{catalogData.length}</span></PropertyRow>
               <PropertyRow label="Last synced"><span>{lastSynced ? lastSynced.toLocaleTimeString() : "—"}</span></PropertyRow>
             </div>
             <div style={{ padding: 8 }}>
@@ -275,7 +271,7 @@ export default function PackagePage({ projectName, projectPath }: Props) {
                 <PackageSection
                   title="AVAILABLE"
                   count={availableList.length}
-                  emptyText={searchQuery ? "No packages match your search." : "No marketplace packages available."}
+                  emptyText={searchQuery ? "No packages match your search." : "No verified packages available."}
                   packages={availableList}
                   isInstalling={isInstalling}
                   onInstall={handleInstall}

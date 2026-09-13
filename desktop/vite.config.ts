@@ -77,5 +77,11 @@ export default defineConfig(async () => ({
       // 3. tell Vite to ignore watching `src-tauri`
       ignored: ["**/src-tauri/**"],
     },
+    fs: {
+      // `supported-packages.json` -- the verified feature registry -- lives at
+      // the repo root, one level above this app, so the dev server has to be
+      // told it may serve it. `vite build` bundles it regardless.
+      allow: [here, path.resolve(here, "..", "supported-packages.json")],
+    },
   },
 }));
