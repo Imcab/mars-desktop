@@ -1,0 +1,32 @@
+# MARS Simulation Studio: la aplicacion de simulacion, aparte de mars-desktop.
+#
+# No comparte workspace con la app ni con el bridge a proposito. Es un producto
+# distinto, con su propio ciclo de vida: la simulacion se puede reinstalar o
+# romper sin tocar el dashboard que el equipo usa en competencia.
+#
+# No lleva toolchain de node. Su UI es un panel de control de una sola pagina
+# estatica en ui/, asi que se compila con cargo y nada mas. El dashboard con
+# graficas y campo 3D ya existe --- es mars-desktop, y recibe los datos de esta
+# simulacion por NT4 igual que de un robot real.
+[package]
+name = "mars-sim-app"
+# Acompana a MSS_VERSION de ui/js/constants.js: esta es la que acaba en el
+# ejecutable y en el instalador; aquella, la que se ve en la interfaz.
+version = "0.9.5"
+edition = "2021"
+
+# See the note in desktop/src-tauri/Cargo.toml: without `custom-protocol` the binary
+# stays in development mode. It did not break here because this tauri.conf.json
+# declares no devUrl, but relying on that coincidence is not a strategy.
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"

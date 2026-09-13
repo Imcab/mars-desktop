@@ -23,30 +23,47 @@ dist-ssr
 *.sln
 *.sw?
 
-# Simulación
-sim/build/
-sim/install/
-sim/dist/
-sim/.gzsource/src/
+# --- desktop/ : MARS Desktop -----------------------------------------------
+# `node_modules` y `dist` ya salen arriba (sin barra, aplican a cualquier
+# nivel), y lo de Rust lo lleva desktop/src-tauri/.gitignore, que se mudó con
+# la carpeta.
+
+# --- simulationstudio/ : MARS Simulation Studio -----------------------------
+simulationstudio/build/
+simulationstudio/install/
+simulationstudio/dist/
+simulationstudio/.gzsource/src/
 # Persistencia que deja el servidor NT4 de nt-probe al correr los tests.
-sim/networktables.json
+simulationstudio/networktables.json
 
 # Bridge de simulacion
-sim/bridge/target/
-sim/app/target/
+simulationstudio/bridge/target/
+simulationstudio/app/target/
 # Logs que dejan los procesos que lanza MARS Sim.
 # Canchas 3D del Studio: 17 MB por cancha de asset de terceros, y la Field
 # Library las reinstala en un clic desde las que ya tiene mars-desktop. Un
 # mundo que referencia una cancha ausente sigue corriendo --- pierde el visual,
 # no la fisica --- asi que ignorarlas degrada bien.
-sim/fields/
+simulationstudio/fields/
 
-sim/build/app-*.log
-sim/build/app-*.err
+simulationstudio/build/app-*.log
+simulationstudio/build/app-*.err
 
-# Instalador
+# --- installer/ -------------------------------------------------------------
 installer/target/
 installer/gen/schemas/
+
+# --- lib/ : la libreria MARS ------------------------------------------------
+# lib/.gitignore lleva lo de gradle (build/, .gradle/, las constantes
+# generadas). Lo que NO se ignora, y es deliberado, es lib/maven/: los jars
+# publicados viven en el repo porque son lo que Pages sirve a los equipos.
+
+# --- docs/ + el sitio de Pages ----------------------------------------------
+docs/site/
+docs/.cache/
+# Lo que arma .github/workflows/pages.yml: docs + javadoc + maven + Mars.json.
+_site/
+
 # Paquetes que produce scripts/package-release.mjs: son artefactos de build,
 # viven en las releases de GitHub, no en el repo.
 release/

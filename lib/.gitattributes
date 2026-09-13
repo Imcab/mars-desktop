@@ -1,0 +1,18 @@
+#
+# https://help.github.com/articles/dealing-with-line-endings/
+#
+# Linux start script should use lf
+/gradlew        text eol=lf
+
+# These are Windows script files and should use crlf
+*.bat           text eol=crlf
+
+# Binary files should be left untouched
+*.jar           binary
+
+# The published maven repository is served byte for byte, and every artifact in
+# it carries .md5/.sha1/.sha256/.sha512 files that Gradle verifies against what
+# it downloaded. Line-ending conversion on a .pom or a .module changes the bytes
+# and not the checksum next to them, which is how this tree arrived with every
+# .pom already disagreeing with its own sha256. Nothing under maven/ is text.
+maven/** binary

@@ -15,13 +15,19 @@
 // Every archive carries its executable AT THE ROOT. That is not incidental: the
 // installer drops the contents straight into the install folder, and
 // mars-desktop looks for the Simulation Studio NEXT TO its own executable (see
-// src-tauri/src/simlauncher.rs). Putting the binary inside a subfolder would
-// break that lookup without any error at all.
+// desktop/src-tauri/src/simlauncher.rs). Putting the binary inside a subfolder
+// would break that lookup without any error at all.
 //
 // The Studio's archive also carries a `sim/` folder with the data AND the
 // compiled engine it needs to start; see `stageSimData` and `stageSimBinaries`
 // for what goes in and why. Packaging it on a machine that has not built the
 // engine is refused: that archive installs and can never run.
+//
+// THE REPOSITORY SAYS `simulationstudio/`, THE ARCHIVE SAYS `sim/`. They are
+// not the same name on purpose: the folder inside the archive is a contract
+// with the installed app (`Supervisor::buscar_sim_dir` looks for a `sim/` next
+// to the executable), while the folder in the repository is only where the
+// sources happen to live. Renaming the second must not rename the first.
 
 import { execFileSync } from "node:child_process"
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
@@ -30,6 +36,12 @@ import { fileURLToPath } from "node:url"
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..")
 const outDir = join(root, "release")
+
+// The two products this packages out of the repository tree. The `sim/` that
+// appears below is a different thing --- the folder the Studio's data travels
+// under INSIDE the archive --- and is written literally on purpose.
+const DESKTOP = "desktop"
+const STUDIO = "simulationstudio"
 
 const args = process.argv.slice(2)
 const noStudio = args.includes("--no-studio")
@@ -66,11 +78,11 @@ const EXT = OS === "windows" ? "zip" : "tar.gz"
 // The Studio drags Gazebo along, which today is only built on Windows and Linux.
 const HAS_STUDIO = OS !== "macos"
 
-const version = readFileSync(join(root, "src/constants/version.ts"), "utf8").match(
+const version = readFileSync(join(root, DESKTOP, "src/constants/version.ts"), "utf8").match(
   /MARS_VERSION\s*=\s*"([^"]+)"/,
 )?.[1]
 if (!version) {
-  console.error("Could not read MARS_VERSION from src/constants/version.ts")
+  console.error("Could not read MARS_VERSION from desktop/src/constants/version.ts")
   process.exit(2)
 }
 
@@ -138,10 +150,10 @@ function stageSimData() {
 
   const skip = (src) => !/[\\/](__pycache__|target|build|dist|\.gzsource)$/.test(src)
   for (const dir of ["worlds", "protocol", "gui", "models", "glue", "engine"]) {
-    cpSync(join(root, "sim", dir), join(simOut, dir), { recursive: true, filter: skip })
+    cpSync(join(root, STUDIO, dir), join(simOut, dir), { recursive: true, filter: skip })
   }
   for (const file of ["environment.yml", "build.ps1", "verify.ps1"]) {
-    cpSync(join(root, "sim", file), join(simOut, file))
+    cpSync(join(root, STUDIO, file), join(simOut, file))
   }
   return simOut
 }
@@ -175,7 +187,7 @@ function stageSimBinaries(simOut) {
   // The bridge is plain cargo, so it lands wherever it was built. Release
   // first: if both exist it is the one worth shipping.
   const bridge = ["release", "debug"]
-    .map((profile) => join(root, "sim/bridge/target", profile, `mars-bridge${EXE}`))
+    .map((profile) => join(root, STUDIO, "bridge/target", profile, `mars-bridge${EXE}`))
     .find(existsSync)
 
   const marsLink = OS === "windows" ? "MarsLink.dll" : "libMarsLink.so"
@@ -185,10 +197,10 @@ function stageSimBinaries(simOut) {
   // runs in CI --- and the other three are `fail`. Two different answers to
   // "is this required?" is how you end up refusing to ship over a window.
   const pieces = [
-    ["mars-sim-server", join(root, "sim/build", `mars-sim-server${EXE}`), true],
+    ["mars-sim-server", join(root, STUDIO, "build", `mars-sim-server${EXE}`), true],
     ["mars-bridge", bridge, true],
-    [marsLink, join(root, "sim/build", marsLink), true],
-    ["mars-sim-gui", join(root, "sim/build", `mars-sim-gui${EXE}`), false],
+    [marsLink, join(root, STUDIO, "build", marsLink), true],
+    ["mars-sim-gui", join(root, STUDIO, "build", `mars-sim-gui${EXE}`), false],
   ]
 
   const missing = { critical: [], optional: [] }
@@ -226,7 +238,7 @@ mkdirSync(outDir, { recursive: true })
 // writes references it by path, and without it the launcher gets the generic
 // icon.
 const icon = join(outDir, "icon.png")
-cpSync(join(root, "src-tauri/icons/128x128@2x.png"), icon)
+cpSync(join(root, DESKTOP, "src-tauri/icons/128x128@2x.png"), icon)
 
 const editions = onlyEdition ? [onlyEdition] : ["full", "tools"]
 for (const edition of editions) {
@@ -236,24 +248,28 @@ for (const edition of editions) {
   }
   console.log(`\n--- mars-desktop (${edition}) ---`)
 
-  // The front end first: the binary embeds it at compile time.
-  run("npm", ["run", "build"], { env: { ...process.env, MARS_EDITION: edition } })
+  // The front end first: the binary embeds it at compile time. npm runs inside
+  // desktop/, which is where the dashboard's package.json lives.
+  run("npm", ["run", "build"], {
+    cwd: join(root, DESKTOP),
+    env: { ...process.env, MARS_EDITION: edition },
+  })
 
   // `custom-protocol` is passed explicitly rather than being a `default`
   // feature because the Tools edition is built with --no-default-features,
   // which would take it away: the binary would open the devUrl and show the
   // webview's connection error instead of the app. See the note in
-  // src-tauri/Cargo.toml.
+  // desktop/src-tauri/Cargo.toml.
   const cargo = [
     "build", "--release",
-    "--manifest-path", "src-tauri/Cargo.toml",
+    "--manifest-path", `${DESKTOP}/src-tauri/Cargo.toml`,
     "--features", "custom-protocol",
   ]
   if (edition === "tools") cargo.push("--no-default-features")
   if (TRIPLE) cargo.push("--target", TRIPLE)
   run("cargo", cargo)
 
-  const binary = join(root, "src-tauri/target", SUBDIR, `mars-desktop${EXE}`)
+  const binary = join(root, DESKTOP, "src-tauri/target", SUBDIR, `mars-desktop${EXE}`)
   if (!existsSync(binary)) {
     console.error(`cargo did not leave ${binary}`)
     process.exit(1)
@@ -263,10 +279,10 @@ for (const edition of editions) {
 
 if (HAS_STUDIO && !noStudio) {
   console.log("\n--- MARS Simulation Studio ---")
-  const cargoStudio = ["build", "--release", "--manifest-path", "sim/app/Cargo.toml"]
+  const cargoStudio = ["build", "--release", "--manifest-path", `${STUDIO}/app/Cargo.toml`]
   if (TRIPLE) cargoStudio.push("--target", TRIPLE)
   run("cargo", cargoStudio)
-  const binary = join(root, "sim/app/target", SUBDIR, `mars-sim-app${EXE}`)
+  const binary = join(root, STUDIO, "app/target", SUBDIR, `mars-sim-app${EXE}`)
   if (existsSync(binary)) {
     const simData = stageSimData()
     const missing = stageSimBinaries(simData)
@@ -281,8 +297,8 @@ if (HAS_STUDIO && !noStudio) {
         `\nThe Studio was NOT packaged: the compiled engine is missing (${missing.critical.join(", ")}).\n` +
           `Build it and run this again:\n` +
           `    conda activate mars-sim\n` +
-          `    sim\\build.ps1                                     # engine, world window, MarsLink\n` +
-          `    cargo build --release --manifest-path sim/bridge/Cargo.toml\n` +
+          `    ${STUDIO}\\build.ps1                                     # engine, world window, MarsLink\n` +
+          `    cargo build --release --manifest-path ${STUDIO}/bridge/Cargo.toml\n` +
           `Pass --no-engine to package it anyway (it will not start).`,
       )
     } else {

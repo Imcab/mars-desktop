@@ -15,7 +15,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version to publish (without the v). Empty = the one in version.ts"
+        description: "Version to publish (without the v). Empty = the one in desktop/src/constants/version.ts"
         required: false
 
 permissions:
@@ -53,16 +53,20 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          # The dashboard's package.json lives in desktop/, not at the root:
+          # without this the cache step looks for a lockfile that is not there
+          # and fails before anything is built.
+          cache-dependency-path: desktop/package-lock.json
 
       - uses: dtolnay/rust-toolchain@stable
 
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: |
-            src-tauri
+            desktop/src-tauri
             installer
-            sim/app
-            sim/bridge
+            simulationstudio/app
+            simulationstudio/bridge
 
       # Tauri on Linux links against WebKitGTK and libsoup. Without this the
       # build fails inside `pkg-config` with an error that never mentions Tauri.
@@ -85,11 +89,13 @@ jobs:
             librsvg2-dev
 
       - run: npm ci
+        working-directory: desktop
 
       - name: Check the version is in sync
         run: node scripts/sync-version.mjs
 
       - run: npm test
+        working-directory: desktop
 
       # The Simulation Studio's engine is C++ against Gazebo, and Gazebo comes
       # from conda: there is no wheel, no vendored copy and no way around it.
@@ -106,7 +112,7 @@ jobs:
         uses: conda-incubator/setup-miniconda@v3
         with:
           miniforge-version: latest
-          environment-file: sim/environment.yml
+          environment-file: simulationstudio/environment.yml
           activate-environment: mars-sim
           # Solving Gazebo's dependency tree with plain conda is the difference
           # between a couple of minutes and a quarter of an hour.
@@ -125,12 +131,12 @@ jobs:
           # build here would go green. Both are set by hand.
           $ErrorActionPreference = "Stop"
           if (-not $env:CONDA_PREFIX) { throw "the mars-sim environment is not active" }
-          ./sim/build.ps1
+          ./simulationstudio/build.ps1
           # gz-transport-sys resolves the C++ libraries through pkg-config, the
-          # same way sim/verify.ps1 does it.
+          # same way simulationstudio/verify.ps1 does it.
           $env:PKG_CONFIG_PATH = "$env:CONDA_PREFIX\Library\lib\pkgconfig"
           $env:PATH = "$env:CONDA_PREFIX\Library\bin;$env:PATH"
-          cargo build --release --manifest-path sim/bridge/Cargo.toml --bins
+          cargo build --release --manifest-path simulationstudio/bridge/Cargo.toml --bins
           if ($LASTEXITCODE -ne 0) { throw "the bridge build failed" }
 
       - name: Build and package
@@ -189,7 +195,7 @@ jobs:
         run: |
           VERSION="${{ inputs.version }}"
           if [ -z "$VERSION" ]; then
-            VERSION=$(grep -oP 'MARS_VERSION\s*=\s*"\K[^"]+' src/constants/version.ts)
+            VERSION=$(grep -oP 'MARS_VERSION\s*=\s*"\K[^"]+' desktop/src/constants/version.ts)
           fi
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           node scripts/make-manifest.mjs release "$VERSION"

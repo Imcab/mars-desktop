@@ -16,7 +16,7 @@ description = "Installer for MARS Desktop and its ecosystem"
 authors = ["STZ Robotics"]
 edition = "2021"
 
-# See the note in src-tauri/Cargo.toml: without `custom-protocol`,
+# See the note in desktop/src-tauri/Cargo.toml: without `custom-protocol`,
 # `tauri::is_dev()` returns true and the binary does not serve the embedded UI.
 [features]
 default = ["custom-protocol"]

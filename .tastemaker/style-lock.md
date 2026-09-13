@@ -1,6 +1,6 @@
 # Style lock — MARS Desktop
 
-Established: 2026-09-06. Source: user-supplied reference images (AdvantageScope, RViz, a 3D-tool property panel) + existing `src/styles/global.css` dark palette (kept, not replaced).
+Established: 2026-09-06. Source: user-supplied reference images (AdvantageScope, RViz, a 3D-tool property panel) + existing `desktop/src/styles/global.css` dark palette (kept, not replaced).
 
 This is an **app-shell desktop tool** (Tauri + React), not a marketing site — most of tastemaker's marketing-page sections (hero, macrostructure, narrative arc, asset curation, motion storytelling) don't apply here and are omitted. The brief: make the existing dark engineering-tool palette actually *read* as engineering software (RViz/AdvantageScope/MATLAB), not just deduplicate the code that draws it.
 
@@ -46,14 +46,14 @@ Practical read: `--border-main` against any background is intentionally low-cont
 - Corner radius: 2-4px throughout (unchanged) — sharp, not rounded; matches the reference software's flat, un-rounded chrome.
 - Shadow depth: none anywhere in the app (unchanged) — separation is done with 1px hairline borders, exactly like RViz/AdvantageScope. Do not introduce drop shadows.
 - Border usage: 1px hairlines for structural separation (unchanged).
-- **New: GroupBox pattern** (`src/components/common/GroupBox.tsx`) — a titled bordered panel with the label embedded in the top border line, styled after MATLAB's `uipanel` / Qt's `QGroupBox`. This is the concrete "engineering software" signature the references share that MARS didn't have at all before today (plain stacked labels instead of grouped, bordered sections). Piloted on `WatchDogPage`'s sidebar (Filters / Session Summary groups) — not yet rolled out to the other 8 pages, pending user confirmation of the direction.
+- **New: GroupBox pattern** (`desktop/src/components/common/GroupBox.tsx`) — a titled bordered panel with the label embedded in the top border line, styled after MATLAB's `uipanel` / Qt's `QGroupBox`. This is the concrete "engineering software" signature the references share that MARS didn't have at all before today (plain stacked labels instead of grouped, bordered sections). Piloted on `WatchDogPage`'s sidebar (Filters / Session Summary groups) — not yet rolled out to the other 8 pages, pending user confirmation of the direction.
 
 ## Density & spacing
 - Sidebar sections: 20-24px outer padding, 16px gap between grouped fields inside a GroupBox (tightened from the previous 20px gap between ungrouped blocks, since the GroupBox border now does the separation work).
 - Data tables/lists: already dense (8-10px row padding, 10-12px font) — matches the app-shell density guidance of "denser than a marketing page's spacing scale."
 
 ## Timeline (specifically called out by the user against AdvantageScope)
-`src/components/layout/TimelineCanvas.tsx`'s `draw()` — **changed today**:
+`desktop/src/components/layout/TimelineCanvas.tsx`'s `draw()` — **changed today**:
 - Removed the horizontal line bisecting the ruler at half-height (was making it read as a chart axis, not a ruler).
 - Tick marks now hang from one edge only (top, y=4→11) instead of both top and bottom.
 - Tick labels moved below the ticks (baseline "top" at y=15) instead of vertically centered mid-bar.
@@ -67,7 +67,7 @@ Practical read: `--border-main` against any background is intentionally low-cont
 
 ## Structural pass — RViz widget chrome, not just color (2026-09-06)
 User pushback again: color alone doesn't make it look like RViz — the actual widget/panel *shapes* were still generic. Compared side-by-side against a real RViz screenshot (Displays/Views/Time as separate docked panels, each with its own solid titlebar + icon + content, a slim single-row toolbar, a bare two-item menu bar). Concrete structural changes, not palette tweaks:
-- **`GroupBox` → `Panel`** (`src/components/common/GroupBox.tsx` deleted, replaced by `src/components/common/Panel.tsx`). Old look: title embedded in the border line (MATLAB `uipanel`). New look: a solid titlebar strip (`--bg-menubar` background, optional leading icon, bottom hairline) with content below — this is RViz/Qt's `QDockWidget` convention, a materially different shape, not a recolor. Same prop contract otherwise (`title`, `children`), so all 15 call sites across 7 pages needed only an import-path + tag rename, no logic changes. Added a matching `icon` per panel (Filters→`ti-filter`, Statistics/Summary panels→`ti-chart-bar`, Registry→`ti-package`, etc.) since RViz's own "Displays"/"Views" titlebars carry a small icon next to the label.
+- **`GroupBox` → `Panel`** (`desktop/src/components/common/GroupBox.tsx` deleted, replaced by `desktop/src/components/common/Panel.tsx`). Old look: title embedded in the border line (MATLAB `uipanel`). New look: a solid titlebar strip (`--bg-menubar` background, optional leading icon, bottom hairline) with content below — this is RViz/Qt's `QDockWidget` convention, a materially different shape, not a recolor. Same prop contract otherwise (`title`, `children`), so all 15 call sites across 7 pages needed only an import-path + tag rename, no logic changes. Added a matching `icon` per panel (Filters→`ti-filter`, Statistics/Summary panels→`ti-chart-bar`, Registry→`ti-package`, etc.) since RViz's own "Displays"/"Views" titlebars carry a small icon next to the label.
 - **`ToolbarButton`'s `"lg"` size**: was a big ribbon button (64×62px, icon stacked above label, Office-ribbon shape). Now a compact horizontal row (30px tall, icon beside label, 11.5px text) — matches RViz's slim single-row toolbar instead of a ribbon. `ToolBar.tsx`'s container dropped from 76px to 38px tall to match; separators shrank from 48px to 20px tall.
 - **`MenuBar`**: removed the MARS logo block and the right-aligned current-page indicator — RViz's menu bar is bare text ("File Panels Help"), zero branding, zero status readouts. Height dropped 32px→26px. Dropdown panels gained a subtle shadow (the one deliberate exception to the "no shadows anywhere" shape-language rule — a transient floating overlay reads better separated from the content under it; static chrome still uses hairlines only).
 - **`DashboardCard`'s header bar**: already structurally matched RViz's titlebar convention (title + small icon buttons at the right, distinct bg strip) before this pass — just aligned its background token from `--bg-dark` to `--bg-menubar` so every "titled container" in the app (Panel, DashboardCard, PanelHeader) shares one exact titlebar tone instead of two near-identical grays.

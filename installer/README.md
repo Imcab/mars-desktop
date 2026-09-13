@@ -21,7 +21,7 @@ release/MARS-Installer-macos-x86_64   macOS Intel
 
 "Tools only" is **not the same app with the buttons hidden**: it is a different
 build, with no MARS code in the front-end bundle and none in the Rust binary.
-How that is done is in [`src/mars/README.md`](../src/mars/README.md).
+How that is done is in [`desktop/src/mars/README.md`](../desktop/src/mars/README.md).
 
 ## How it works
 
@@ -90,20 +90,21 @@ taking them along.
   die, retries the delete, and removes itself at the end.
 - **The archives are flat**, with the executable at the root. mars-desktop looks
   for the Simulation Studio *next to* its own executable
-  (`src-tauri/src/simlauncher.rs`): an intermediate folder would break that
+  (`desktop/src-tauri/src/simlauncher.rs`): an intermediate folder would break that
   lookup without any error at all.
 - **The Studio needs its `sim/` folder to even start.** `Supervisor::descubrir()`
   looks for a `sim/` containing `worlds/` and `protocol/`, and without one it
   writes the reason to stderr and exits — with no console, so the message goes
-  nowhere. Shipping the executable alone made the button in mars-desktop look
-  like it did nothing at all. The Studio's archive now carries that data (about
-  half a megabyte: worlds, protocol, GUI layout, models, Java glue, engine
-  sources).
+  nowhere. (`sim/` is what that folder is called inside the archive and in an
+  install; the same thing in this repository is `simulationstudio/`.) Shipping
+  the executable alone made the button in mars-desktop look like it did nothing
+  at all. The Studio's archive now carries that data (about half a megabyte:
+  worlds, protocol, GUI layout, models, Java glue, engine sources).
 - **What the installer does NOT ship**: the Gazebo environment the Simulation
-  Studio needs in order to *simulate* (conda, see `sim/environment.yml`) and the
-  compiled engine. The Studio opens, its Diagnostics page says what is missing
-  and how to create the environment. That is a separate multi-gigabyte
-  dependency.
+  Studio needs in order to *simulate* (conda, see
+  `simulationstudio/environment.yml`) and the compiled engine. The Studio opens,
+  its Diagnostics page says what is missing and how to create the environment.
+  That is a separate multi-gigabyte dependency.
 - **A launch that fails is never silent.** `abrir_sim_app` waits a moment,
   notices if the Studio died, and reports the reason it wrote to stderr. "I
   click and nothing happens" is the worst symptom there is.
@@ -136,7 +137,7 @@ rebuild.
 ## Releasing a version
 
 ```bash
-node scripts/sync-version.mjs --write   # line up all four versions
+node scripts/sync-version.mjs --write   # line up every file that carries a version
 git tag v1.1.4 && git push --tags       # fires .github/workflows/release.yml
 ```
 

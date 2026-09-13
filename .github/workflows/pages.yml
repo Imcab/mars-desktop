@@ -1,0 +1,123 @@
+# Publishes the one GitHub Pages site this repository owns.
+#
+# It carries four things at once, and two of them are load-bearing for people
+# who do not work here:
+#
+#   /             the documentation (MkDocs Material, from docs/)
+#   /api/         the MARS library's Javadoc
+#   /maven/       THE MAVEN REPOSITORY the vendordep resolves against
+#   /Mars.json    THE VENDORDEP ITSELF, which is what `jsonUrl` points at
+#
+# The last two are URLs written into the `vendordeps/Mars.json` of every robot
+# project that has MARS installed. A deploy that drops them, or serves them from
+# a different path, does not fail here: it fails on a team's laptop, as
+# "could not resolve com.stzteam.mars:Mars". That is why the assembled site is
+# checked for both before it is uploaded, and why a docs-only change still
+# republishes the whole thing rather than a subset.
+#
+# This used to live in STZ-Robotics/Mars as `publish.yml`, which served the
+# Javadoc at the root. The Javadoc moved to /api/ so the documentation could
+# have the root; nothing resolves a Javadoc URL at build time, so that move
+# costs a stale link and not a broken build.
+
+name: pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "lib/**"
+      - "scripts/check-vendordep.mjs"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Queue deploys instead of cancelling them: a cancelled run that had already
+# started uploading is not what you want standing between a team and the maven.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Before anything is built: does Mars.json describe artifacts that are
+      # actually in lib/maven, and do its URLs point here? See the script.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check the vendordep
+        run: node scripts/check-vendordep.mjs
+
+      # --- The documentation, which becomes the root ------------------------
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          # Without this, setup-python's pip cache looks for a requirements
+          # file at the root, finds none, and fails the step outright.
+          cache-dependency-path: docs/requirements.txt
+      - run: pip install -r docs/requirements.txt
+      # mkdocs.yml lives in docs/, so the site dir is relative to it.
+      - name: Build the documentation
+        run: mkdocs build --site-dir ../_site
+        working-directory: docs
+
+      # --- The Javadoc ------------------------------------------------------
+      - uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: temurin
+          cache: gradle
+      - name: Build the Javadoc
+        run: |
+          chmod +x gradlew
+          ./gradlew javadoc -x test
+        working-directory: lib
+
+      # --- Everything into one site ----------------------------------------
+      - name: Assemble the site
+        run: |
+          mkdir -p _site/api
+          cp -r lib/build/docs/javadoc/. _site/api/
+          cp -r lib/maven _site/maven
+          cp lib/Mars.json _site/Mars.json
+          # Belt and braces: the artifact deploy does not run Jekyll, but a
+          # branch-based deploy would, and Jekyll drops paths that start with an
+          # underscore -- which Javadoc does produce.
+          touch _site/.nojekyll
+
+      # The two paths with a contract outside this repository. Checking them
+      # here catches an assembly that silently copied nothing, which `cp -r`
+      # will happily do.
+      - name: Check what is about to be published
+        run: |
+          VERSION=$(node -p "require('./lib/Mars.json').version")
+          test -f "_site/Mars.json" || { echo "::error::_site/Mars.json is missing"; exit 1; }
+          JAR="_site/maven/com/stzteam/mars/Mars/$VERSION/Mars-$VERSION.jar"
+          test -f "$JAR" || { echo "::error::$JAR is missing"; exit 1; }
+          test -f "_site/index.html" || { echo "::error::the documentation did not build"; exit 1; }
+          test -f "_site/api/index.html" || { echo "::error::the Javadoc did not build"; exit 1; }
+          echo "Mars $VERSION, $(du -sh _site/maven | cut -f1) of maven, docs and Javadoc."
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
