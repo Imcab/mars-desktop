@@ -15,8 +15,20 @@ dist-ssr
 .tastemaker/*
 
 # Editor directories and files
+#
+# `.vscode/*` lleva barra en medio, asi que esta anclado A LA RAIZ: NO afecta a
+# templates/project/.vscode/, que es contenido de la plantilla y tiene que
+# publicarse. Lo mismo vale para su .wpilib/, que es lo que hace que la carpeta
+# generada sea un proyecto de robot para la extension de WPILib.
+#
+# extensions.json se salva a proposito: son las dos extensiones recomendadas
+# (Tauri y rust-analyzer) para quien clone esto.
 .vscode/*
 !.vscode/extensions.json
+
+# Notas de trabajo de la skill de diseno de Claude Code. Es herramienta local,
+# no documentacion del proyecto.
+.tastemaker/
 .idea
 .DS_Store
 *.suo
