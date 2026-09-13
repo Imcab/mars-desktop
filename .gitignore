@@ -53,9 +53,16 @@ simulationstudio/build/app-*.err
 installer/target/
 installer/gen/schemas/
 
-# --- docs/ : mkdocs ---------------------------------------------------------
+# --- lib/ : la libreria MARS ------------------------------------------------
+# lib/.gitignore lleva lo de gradle (build/, .gradle/, las constantes
+# generadas). Lo que NO se ignora, y es deliberado, es lib/maven/: los jars
+# publicados viven en el repo porque son lo que Pages sirve a los equipos.
+
+# --- docs/ + el sitio de Pages ----------------------------------------------
 docs/site/
 docs/.cache/
+# Lo que arma .github/workflows/pages.yml: docs + javadoc + maven + Mars.json.
+_site/
 
 # Paquetes que produce scripts/package-release.mjs: son artefactos de build,
 # viven en las releases de GitHub, no en el repo.
