@@ -161,6 +161,39 @@ if (actual && actual !== PAGES) {
   ok(`the URLs name the repository that serves them — ${process.env.GITHUB_REPOSITORY}`)
 }
 
+// --- The copy the project template ships ------------------------------------
+//
+// `templates/project/` carries a `vendordeps/Mars.json`, because that is what a
+// robot project has on disk and the template IS a robot project. It is the file
+// every team starts from, so a stale one does not break anything loudly -- it
+// just means every project created from today onwards is born pointing at the
+// old site and needing the migration everybody else already did.
+//
+// It has to be the published vendordep verbatim: that is exactly what WPILib
+// writes into a project when the dependency is installed by hand.
+
+const TEMPLATE_COPY = "templates/project/vendordeps/Mars.json"
+const templatePath = join(root, TEMPLATE_COPY)
+if (!existsSync(templatePath)) {
+  fail(`${TEMPLATE_COPY} does not exist; the project template has to ship the vendordep`)
+} else {
+  const published = readFileSync(join(root, "lib/Mars.json"), "utf8")
+  const shipped = readFileSync(templatePath, "utf8")
+  if (shipped !== published) {
+    const theirs = JSON.parse(shipped)
+    const detail =
+      theirs.version !== version
+        ? `it ships ${theirs.version} while lib/Mars.json publishes ${version}`
+        : theirs.jsonUrl !== dep.jsonUrl
+          ? `it points at ${theirs.jsonUrl}`
+          : "it differs from lib/Mars.json"
+    fail(`${TEMPLATE_COPY}: ${detail}.
+        Fix it with:  cp lib/Mars.json ${TEMPLATE_COPY}`)
+  } else {
+    ok(`${TEMPLATE_COPY} — the published vendordep, verbatim`)
+  }
+}
+
 // --- Verdict ------------------------------------------------------------------
 
 if (problems.length) {
