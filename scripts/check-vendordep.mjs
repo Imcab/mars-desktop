@@ -32,6 +32,28 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..")
 // project asks for. If GitHub Pages ever moves, these move with it -- and the
 // old ones have to keep answering, see lib/README.md.
 const PAGES = "https://stz-robotics.github.io/Mars-frc"
+
+/**
+ * The Pages URL the repository we are running in would actually serve.
+ *
+ * This exists because the constant above once named a different repository than
+ * the one publishing it, and nothing noticed: the file agreed with the constant,
+ * the constant agreed with itself, and the site went live serving a vendordep
+ * whose jsonUrl and mavenUrls were both 404. Internal consistency is not the
+ * property that matters -- agreeing with WHERE THIS IS is.
+ *
+ * It only speaks up in Actions, where GITHUB_REPOSITORY says who we are. A
+ * custom domain would legitimately break the derivation; the message says so
+ * rather than pretending the repository is wrong.
+ */
+function pagesUrlOfThisRepo() {
+  const slug = process.env.GITHUB_REPOSITORY
+  if (!slug || !slug.includes("/")) return null
+  const [owner, repo] = slug.split("/")
+  // Project pages live under the owner's lowercased github.io host; the
+  // repository segment keeps its case, and it IS case-sensitive.
+  return `https://${owner.toLowerCase()}.github.io/${repo}`
+}
 const UUID = "8b9c1d2e-3f4a-5b6c-7d8e-9f0a1b2c3d4e"
 const GROUP = "com.stzteam.mars"
 const ARTIFACT = "Mars"
@@ -123,6 +145,20 @@ if (!dep.mavenUrls?.includes(`${PAGES}/maven/`)) {
   fail(`mavenUrls does not list ${PAGES}/maven/, which is where this repository publishes`)
 } else {
   ok(`mavenUrls — ${PAGES}/maven/`)
+}
+
+// The check that a rename or a transfer cannot slip past.
+const actual = pagesUrlOfThisRepo()
+if (actual && actual !== PAGES) {
+  fail(
+    `these URLs say ${PAGES}, but ${process.env.GITHUB_REPOSITORY} publishes at ${actual}.
+` +
+      `        Repoint PAGES here, lib/Mars.json and lib/README.md -- or, if this is a
+` +
+      `        custom domain, say so here.`,
+  )
+} else if (actual) {
+  ok(`the URLs name the repository that serves them — ${process.env.GITHUB_REPOSITORY}`)
 }
 
 // --- Verdict ------------------------------------------------------------------

@@ -121,3 +121,48 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+      # Everything up to here checked the site against what the repository says
+      # about itself. This checks it against what is actually being served, which
+      # is a different question and the one that bit: a deploy went out whose
+      # Mars.json named a host that had stopped existing, and every file in the
+      # build agreed with every other file, so nothing failed.
+      #
+      # Reading the published vendordep and then fetching the jar it promises is
+      # the same thing a robot project does. If that round trip does not work
+      # here, it does not work for them either.
+      - name: Verify what is actually being served
+        run: |
+          BASE="${{ steps.deployment.outputs.page_url }}"   # always ends in /
+          echo "Serving from $BASE"
+
+          # Pages takes a moment to pick up a fresh deploy.
+          for i in 1 2 3 4 5 6; do
+            CODE=$(curl -sS -o published.json -w "%{http_code}" -L "${BASE}Mars.json" || echo 000)
+            [ "$CODE" = "200" ] && break
+            echo "  ${BASE}Mars.json -> $CODE, retrying in 10s ($i/6)"
+            sleep 10
+          done
+          [ "$CODE" = "200" ] || { echo "::error::${BASE}Mars.json answers $CODE"; exit 1; }
+
+          VERSION=$(node -p "require('./published.json').version")
+          JSON_URL=$(node -p "require('./published.json').jsonUrl")
+          # The maven served from THIS site: matching on the base rather than on
+          # a repository name keeps working through the next rename.
+          MAVEN=$(node -p "
+            require('./published.json').mavenUrls.find(u => u.startsWith('$BASE')) ?? ''
+          ")
+
+          # The vendordep has to point at the place it was just served from,
+          # otherwise 'Check for updates' sends teams somewhere else forever.
+          if [ "$JSON_URL" != "${BASE}Mars.json" ]; then
+            echo "::error::the published Mars.json says jsonUrl=$JSON_URL but is served at ${BASE}Mars.json"
+            exit 1
+          fi
+          [ -n "$MAVEN" ] || { echo "::error::no maven URL in the published Mars.json points at this site"; exit 1; }
+
+          JAR="${MAVEN}com/stzteam/mars/Mars/${VERSION}/Mars-${VERSION}.jar"
+          CODE=$(curl -sS -o /dev/null -w "%{http_code}" -L "$JAR" || echo 000)
+          [ "$CODE" = "200" ] || { echo "::error::the jar it promises answers $CODE: $JAR"; exit 1; }
+
+          echo "Mars $VERSION resolves end to end: $JSON_URL -> $JAR"

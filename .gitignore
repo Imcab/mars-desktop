@@ -63,6 +63,9 @@ docs/site/
 docs/.cache/
 # Lo que arma .github/workflows/pages.yml: docs + javadoc + maven + Mars.json.
 _site/
+# El Mars.json que ese workflow se descarga del sitio ya publicado para
+# comprobar que resuelve de verdad.
+published.json
 
 # Paquetes que produce scripts/package-release.mjs: son artefactos de build,
 # viven en las releases de GitHub, no en el repo.
