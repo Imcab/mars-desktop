@@ -14,10 +14,10 @@ One GitHub Pages site, built by [`.github/workflows/pages.yml`](../.github/workf
 
 | URL | What |
 |---|---|
-| `https://imcab.github.io/Mars-frc/Mars.json` | **The vendordep.** `jsonUrl` points here; this is what WPILib re-reads on "Check for updates". |
-| `https://imcab.github.io/Mars-frc/maven/` | **The maven repository.** Gradle resolves `com.stzteam.mars:Mars` out of here. |
-| `https://imcab.github.io/Mars-frc/api/` | The Javadoc. |
-| `https://imcab.github.io/Mars-frc/` | The documentation (MkDocs, from `docs/`). |
+| `https://stz-robotics.github.io/Mars-frc/Mars.json` | **The vendordep.** `jsonUrl` points here; this is what WPILib re-reads on "Check for updates". |
+| `https://stz-robotics.github.io/Mars-frc/maven/` | **The maven repository.** Gradle resolves `com.stzteam.mars:Mars` out of here. |
+| `https://stz-robotics.github.io/Mars-frc/api/` | The Javadoc. |
+| `https://stz-robotics.github.io/Mars-frc/` | The documentation (MkDocs, from `docs/`). |
 
 The first two are written into the `vendordeps/Mars.json` of every robot project
 that has MARS installed. They are not ours to move once published: a team that
@@ -75,6 +75,10 @@ This library used to live at `STZ-Robotics/Mars`, whose GitHub Pages served
 `Mars.json` next to it, `maven/` underneath. Development has moved here. The old
 repository has not finished its job, and the order of what remains matters.
 
+The two are now siblings in the same organisation, one letter apart in the URL,
+which is a good way to act on the wrong one. `STZ-Robotics/Mars` is the one
+being retired; `STZ-Robotics/Mars-frc` is this repository.
+
 **1. Deploy this site first.** Both new URLs have to answer before anything
 points at them.
 
@@ -94,10 +98,10 @@ URL-only migration still needs a release.
   "frcYear": "2026",
   "uuid": "8b9c1d2e-3f4a-5b6c-7d8e-9f0a1b2c3d4e",
   "mavenUrls": [
-    "https://imcab.github.io/Mars-frc/maven/",
+    "https://stz-robotics.github.io/Mars-frc/maven/",
     "https://Imcab.github.io/FORGEmini/maven/"
   ],
-  "jsonUrl": "https://imcab.github.io/Mars-frc/Mars.json",
+  "jsonUrl": "https://stz-robotics.github.io/Mars-frc/Mars.json",
   "javaDependencies": [
     { "groupId": "com.stzteam.mars", "artifactId": "Mars", "version": "1.6.7" },
     { "groupId": "com.stzteam.forgemini", "artifactId": "ForgeMini", "version": "1.1.2" }

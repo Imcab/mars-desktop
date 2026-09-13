@@ -31,7 +31,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..")
 // Where the site this repository publishes serves the two things a robot
 // project asks for. If GitHub Pages ever moves, these move with it -- and the
 // old ones have to keep answering, see lib/README.md.
-const PAGES = "https://imcab.github.io/Mars-frc"
+const PAGES = "https://stz-robotics.github.io/Mars-frc"
 const UUID = "8b9c1d2e-3f4a-5b6c-7d8e-9f0a1b2c3d4e"
 const GROUP = "com.stzteam.mars"
 const ARTIFACT = "Mars"

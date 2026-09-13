@@ -1,8 +1,8 @@
 site_name: MARS documentation
-site_url: https://imcab.github.io/Mars-frc/
+site_url: https://stz-robotics.github.io/Mars-frc/
 copyright: Copyright &copy; 2025 STZRobotics
-repo_name: Imcab/Mars-frc
-repo_url: https://github.com/Imcab/Mars-frc
+repo_name: STZ-Robotics/Mars-frc
+repo_url: https://github.com/STZ-Robotics/Mars-frc
 
 theme:
   logo: assets/logo.png
@@ -78,8 +78,8 @@ extra:
   generator: false
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/Imcab
-      name: Imcab's github
+      link: https://github.com/STZ-Robotics
+      name: STZ Robotics on GitHub
 
 extra_css:
   - stylesheets/extra.css

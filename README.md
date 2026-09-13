@@ -13,7 +13,7 @@ three repositories.
 ## Installing
 
 Download the installer for your system from the
-[latest release](https://github.com/Imcab/Mars-frc/releases/latest) and run it.
+[latest release](https://github.com/STZ-Robotics/Mars-frc/releases/latest) and run it.
 It fetches everything else.
 
 | System | File |
@@ -49,7 +49,7 @@ cd installer          && cargo run
 
 ## The published site
 
-One GitHub Pages site, at `https://imcab.github.io/Mars-frc/`, built by
+One GitHub Pages site, at `https://stz-robotics.github.io/Mars-frc/`, built by
 [`.github/workflows/pages.yml`](.github/workflows/pages.yml):
 
 | Path | What |
