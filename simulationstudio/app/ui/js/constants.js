@@ -9,8 +9,9 @@
 // un "0.1.0" escrito a mano cuando el backend todavía no había respondido, así
 // que el número del menú principal dependía de cuándo se pintara la pantalla.
 //
-// Si se toca, hay que tocar también sim/app/Cargo.toml y
-// sim/app/tauri.conf.json: esos dos los lee el instalador, no la interfaz.
+// Si se toca, hay que tocar también simulationstudio/app/Cargo.toml y
+// simulationstudio/app/tauri.conf.json: esos dos los lee el instalador, no la
+// interfaz.
 // `scripts/sync-version.mjs` comprueba que los tres digan lo mismo y el
 // workflow lo corre antes de empaquetar, así que una versión que se quede
 // atrás rompe el build en vez de llegar a una instalación --- que es como se

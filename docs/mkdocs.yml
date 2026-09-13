@@ -1,0 +1,89 @@
+site_name: MARS documentation
+site_url: https://mydomain.org/mysite
+copyright: Copyright &copy; 2025 STZRobotics
+repo_name: Imcab/Mars-frc
+repo_url: https://github.com/Imcab/Mars-frc
+
+theme:
+  logo: assets/logo.png
+  favicon: assets/favicon.png
+  palette:
+    primary: black
+    scheme: default
+  name: material
+  language: en
+  font:
+    text: DM Sans
+    code: JetBrains Mono
+  features:
+    - navigation.instant
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.path
+    - navigation.footer
+    - navigation.top
+    - toc.integrate
+    - search.suggest
+    - content.footnote.tooltips
+    - search.share
+
+plugins:
+  - search
+
+markdown_extensions:
+  - def_list
+  - footnotes
+  - pymdownx.inlinehilite
+  - md_in_html
+  - pymdownx.critic
+  - pymdownx.caret
+  - pymdownx.mark
+  - pymdownx.keys
+  - pymdownx.tilde
+  - pymdownx.smartsymbols
+  - pymdownx.blocks.caption
+  - pymdownx.betterem
+  - tables
+  - admonition
+  - pymdownx.details
+  - abbr
+  - attr_list
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.snippets:
+      auto_append:
+        - includes/abbreviations.md
+  - toc:
+      permalink: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+extra:
+  generator: false
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/Imcab
+      name: Imcab's github
+
+extra_css:
+  - stylesheets/extra.css
+
+extra_javascript:
+  - javascript/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js

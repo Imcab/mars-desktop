@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Levanta un servidor NT4 de verdad y verifica lo que publica el bridge.
 
-    python sim/bridge/nt-probe.py [segundos] [avance_minimo_m]
+    python simulationstudio/bridge/nt-probe.py [segundos] [avance_minimo_m]
 
 Con `avance_minimo_m` exige ademas que la pose SIGA al robot: hay que conducirlo
 en paralelo. Sin ese argumento solo comprueba la pose estatica.
@@ -23,7 +23,7 @@ import time
 
 import ntcore
 
-# Estos valores salen de sim/protocol/topics.toml y de las dimensiones de la
+# Estos valores salen de ../protocol/topics.toml y de las dimensiones de la
 # cancha. El robot arranca en el origen de Gazebo, que es el CENTRO del campo,
 # asi que en el marco de WPILib le toca la mitad de cada dimension.
 CENTRO_X = 16.54 / 2

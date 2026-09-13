@@ -1,20 +1,22 @@
 ﻿# Verificacion end-to-end de la simulacion.
 #
-#   .\sim\verify.ps1
+#   .\simulationstudio\verify.ps1
 #
 # Corre las capas en orden de costo creciente: el contrato (instantaneo), la
 # compilacion del motor y del bridge, y el lazo real con fisica de verdad.
 # Apto para CI.
 $ErrorActionPreference = "Stop"
-$repo = Split-Path -Parent $PSScriptRoot
-$sim = Join-Path $repo "sim"
+# Igual que build.ps1: la carpeta es la que contiene este script, se llame
+# simulationstudio/ (repositorio) o sim/ (instalacion).
+$sim = $PSScriptRoot
+$repo = Split-Path -Parent $sim
 
 $condaEnv = $null
 foreach ($root in @("$env:USERPROFILE\miniforge3", "$env:LOCALAPPDATA\miniforge3")) {
   $c = Join-Path $root "envs\mars-sim"
   if (Test-Path (Join-Path $c "Library\lib\cmake\gz-sim")) { $condaEnv = $c; break }
 }
-if (-not $condaEnv) { throw "falta el entorno 'mars-sim' (conda env create -f sim\environment.yml)" }
+if (-not $condaEnv) { throw "falta el entorno 'mars-sim' (conda env create -f simulationstudio\environment.yml)" }
 
 function Step($n, $msg) { Write-Host "`n[$n] $msg" -ForegroundColor Cyan }
 
@@ -230,7 +232,7 @@ $appCode = $LASTEXITCODE
 if ($appCode -ne 0) { throw "MARS Sim fallo (exit $appCode)" }
 
 # Y que mars-desktop sepa encontrarla: el boton del Sidebar depende de eso.
-Push-Location "$repo\src-tauri"
+Push-Location "$repo\desktop\src-tauri"
 try {
   cargo test --quiet --bin mars-desktop simlauncher
   if ($LASTEXITCODE -ne 0) { throw "el launcher de mars-desktop no encuentra MARS Sim" }

@@ -46,7 +46,7 @@ mars-bridge --robot-map models/testbot/robot-map.json
 
 ### Por qué no se reutiliza el cliente NT4 de la app
 
-`src-tauri/src/nt4/client.rs` es un cliente de CONSUMO con Tauri tejido por todo
+`desktop/src-tauri/src/nt4/client.rs` es un cliente de CONSUMO con Tauri tejido por todo
 su bucle de reconexión: emite cinco eventos al frontend y saca su instancia de
 `state::<NT4State>()`. Desacoplarlo sería refactorizar código que funciona, con
 riesgo de regresión en la app.

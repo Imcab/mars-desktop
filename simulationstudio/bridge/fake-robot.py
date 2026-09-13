@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Codigo de robot de mentira: hace el papel del glue del perfil `vendor`.
 
-    python sim/bridge/fake-robot.py <robot-map.json> [segundos]
+    python simulationstudio/bridge/fake-robot.py <robot-map.json> [segundos]
 
 Ocupa el lugar del `simulationPeriodic` de un robot real:
 

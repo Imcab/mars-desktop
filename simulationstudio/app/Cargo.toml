@@ -15,7 +15,7 @@ name = "mars-sim-app"
 version = "0.9.5"
 edition = "2021"
 
-# See the note in src-tauri/Cargo.toml: without `custom-protocol` the binary
+# See the note in desktop/src-tauri/Cargo.toml: without `custom-protocol` the binary
 # stays in development mode. It did not break here because this tauri.conf.json
 # declares no devUrl, but relying on that coincidence is not a strategy.
 [features]

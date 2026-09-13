@@ -87,7 +87,7 @@ metalico a cero, que es el mismo arreglo que hace AdvantageScope forzando
 
 **El origen es el CENTRO.** El robot arranca en `0,0` de Gazebo, que es el
 centro de la cancha; el origen de esquina que usa WPILib lo produce el bridge
-sumando media cancha (`sim/bridge/src/field.rs`). Por eso la malla va en
+sumando media cancha (`../bridge/src/field.rs`). Por eso la malla va en
 `0 0 0` y no desplazada: moverla para que su esquina caiga en el origen
 descuadraria media cancha todas las poses, sin ningun error.
 
@@ -136,7 +136,7 @@ mars-sim-app --headless [segundos]
 ```
 
 Arranca, espera y para, con código de salida. Existe para que el supervisor sea
-verificable en CI, donde no hay pantalla. Es el paso 8 de `sim/verify.ps1`.
+verificable en CI, donde no hay pantalla. Es el paso 8 de `simulationstudio/verify.ps1`.
 
 Comprueba además que después de `detener` no quede ningún proceso vivo, que es
 lo que distingue "pedimos que pararan" de "pararon".

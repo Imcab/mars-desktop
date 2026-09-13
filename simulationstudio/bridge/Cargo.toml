@@ -1,5 +1,5 @@
 # El bridge de simulación: traduce entre gz-transport (el motor), HALSim
-# WebSocket (el código del robot) y NT4 (la app). Ver sim/protocol/README.md.
+# WebSocket (el código del robot) y NT4 (la app). Ver ../protocol/README.md.
 #
 # Crate independiente a propósito, fuera del workspace de src-tauri: el bridge
 # se compila y distribuye como binario aparte, y meterlo al workspace de la app

@@ -2,10 +2,10 @@
 // Keeps a single MARS Desktop version across the four files that write it, and
 // the Simulation Studio's own version consistent with itself.
 //
-// `src/constants/version.ts` is in charge: it is the one the user sees on the
-// splash screen. The other three are read by the installer and the packager, so
-// one that has drifted publishes a release that claims one version and shows
-// another — a bug you only notice once it is already uploaded.
+// `desktop/src/constants/version.ts` is in charge: it is the one the user sees
+// on the splash screen. The other three are read by the installer and the
+// packager, so one that has drifted publishes a release that claims one version
+// and shows another — a bug you only notice once it is already uploaded.
 //
 //   node scripts/sync-version.mjs          check (exits 1 if they disagree)
 //   node scripts/sync-version.mjs --write  copy version.ts's into the others
@@ -27,12 +27,17 @@ import { fileURLToPath } from "node:url"
 const root = join(dirname(fileURLToPath(import.meta.url)), "..")
 const write = process.argv.includes("--write")
 
+// Each product is a folder of its own at the root of the repository.
+// `installer/` carries a version too, but it answers to neither of these.
+const DESKTOP = "desktop"
+const STUDIO = "simulationstudio"
+
 const read = (rel) => readFileSync(join(root, rel), "utf8")
 const save = (rel, text) => writeFileSync(join(root, rel), text)
 
-const source = read("src/constants/version.ts").match(/MARS_VERSION\s*=\s*"([^"]+)"/)
+const source = read(`${DESKTOP}/src/constants/version.ts`).match(/MARS_VERSION\s*=\s*"([^"]+)"/)
 if (!source) {
-  console.error("Could not read MARS_VERSION from src/constants/version.ts")
+  console.error(`Could not read MARS_VERSION from ${DESKTOP}/src/constants/version.ts`)
   process.exit(2)
 }
 const version = source[1]
@@ -41,15 +46,15 @@ const version = source[1]
 // Cargo.toml's `version` also shows up under every dependency.
 const targets = [
   {
-    file: "package.json",
+    file: `${DESKTOP}/package.json`,
     find: /("version"\s*:\s*")([^"]+)(")/,
   },
   {
-    file: "src-tauri/tauri.conf.json",
+    file: `${DESKTOP}/src-tauri/tauri.conf.json`,
     find: /("version"\s*:\s*")([^"]+)(")/,
   },
   {
-    file: "src-tauri/Cargo.toml",
+    file: `${DESKTOP}/src-tauri/Cargo.toml`,
     // Only the one under [package], which is the first in the file.
     find: /(\[package\][\s\S]*?\nversion\s*=\s*")([^"]+)(")/,
   },
@@ -81,14 +86,14 @@ for (const { file, find } of targets) {
 
 // Cargo.toml leads, the way version.ts leads for the dashboard.
 const studioTargets = [
-  { file: "sim/app/Cargo.toml", find: /(\[package\][\s\S]*?\nversion\s*=\s*")([^"]+)(")/ },
-  { file: "sim/app/tauri.conf.json", find: /("version"\s*:\s*")([^"]+)(")/ },
-  { file: "sim/app/ui/js/constants.js", find: /(MSS_VERSION\s*=\s*")([^"]+)(")/ },
+  { file: `${STUDIO}/app/Cargo.toml`, find: /(\[package\][\s\S]*?\nversion\s*=\s*")([^"]+)(")/ },
+  { file: `${STUDIO}/app/tauri.conf.json`, find: /("version"\s*:\s*")([^"]+)(")/ },
+  { file: `${STUDIO}/app/ui/js/constants.js`, find: /(MSS_VERSION\s*=\s*")([^"]+)(")/ },
 ]
 
 const leader = read(studioTargets[0].file).match(studioTargets[0].find)
 if (!leader) {
-  console.error("Could not read the Studio's version from sim/app/Cargo.toml")
+  console.error(`Could not read the Studio's version from ${STUDIO}/app/Cargo.toml`)
   problems++
 }
 const studioVersion = leader ? leader[2] : null
@@ -106,7 +111,7 @@ for (const { file, find } of studioTargets) {
     save(file, text.replace(find, `$1${studioVersion}$3`))
     console.log(`  fixed ${file} — ${m[2]} → ${studioVersion}`)
   } else {
-    console.error(`  WRONG ${file} — says ${m[2]}, sim/app/Cargo.toml says ${studioVersion}`)
+    console.error(`  WRONG ${file} — says ${m[2]}, ${STUDIO}/app/Cargo.toml says ${studioVersion}`)
     problems++
   }
 }

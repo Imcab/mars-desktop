@@ -93,13 +93,13 @@ export function paginaDiagnostics() {
           el("div.doc", {
             html: `
               <p>Build everything from the repository root:</p>
-              <pre><code>conda env create -f sim/environment.yml     # once
+              <pre><code>conda env create -f simulationstudio/environment.yml   # once
 conda activate mars-sim
-sim\\build.ps1                              # engine, world window, MarsLink
-cargo build --manifest-path sim/bridge/Cargo.toml
-cargo build --manifest-path sim/app/Cargo.toml</code></pre>
-              <p><code>sim\\verify.ps1</code> runs all seven verification layers end to end:
-              contract, engine, bridge, physics, NT4, the hardware loop, and swerve under position
+simulationstudio\\build.ps1                # engine, world window, MarsLink
+cargo build --manifest-path simulationstudio/bridge/Cargo.toml
+cargo build --manifest-path simulationstudio/app/Cargo.toml</code></pre>
+              <p><code>simulationstudio\\verify.ps1</code> runs all seven verification layers end
+              to end: contract, engine, bridge, physics, NT4, the hardware loop, and swerve under position
               control. If that passes and this page still complains, the app is looking at the
               wrong <code>sim/</code> — set <code>MARS_SIM_DIR</code>.</p>`,
           })

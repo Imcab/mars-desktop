@@ -53,8 +53,8 @@ fn find_executable() -> Option<PathBuf> {
         for dir in root.ancestors() {
             for rel in [
                 Path::new(EXE).to_path_buf(),
-                Path::new("sim/app/target/release").join(EXE),
-                Path::new("sim/app/target/debug").join(EXE),
+                Path::new("simulationstudio/app/target/release").join(EXE),
+                Path::new("simulationstudio/app/target/debug").join(EXE),
             ] {
                 let candidate = dir.join(&rel);
                 if candidate.is_file() {
@@ -91,8 +91,8 @@ const STARTUP_GRACE: Duration = Duration::from_millis(1500);
 #[tauri::command]
 pub fn abrir_sim_app() -> Result<String, String> {
     let exe = find_executable().ok_or_else(|| {
-        "MARS Simulation Studio was not found. Build it with `cargo build` in sim/app, \
-         or set MARS_SIM_APP to the path of its executable."
+        "MARS Simulation Studio was not found. Build it with `cargo build` in \
+         simulationstudio/app, or set MARS_SIM_APP to the path of its executable."
             .to_string()
     })?;
 
@@ -148,15 +148,20 @@ mod tests {
     /// If the Studio is built, the launcher has to find it.
     ///
     /// The search walks up the ancestors of the test executable, which in
-    /// `src-tauri/target/debug/deps` passes through the repository root and from
-    /// there reaches `sim/app/target/debug`. It is exactly the same path the app
-    /// follows in development, so if this test passes, the button works.
+    /// `desktop/src-tauri/target/debug/deps` passes through the repository root
+    /// and from there reaches `simulationstudio/app/target/debug`. It is exactly
+    /// the same path the app follows in development, so if this test passes, the
+    /// button works.
     #[test]
     fn finds_mars_sim_when_it_is_built() {
+        // TWO levels up: the crate sits at `desktop/src-tauri`, so its parent is
+        // `desktop/` and only its grandparent is the repository root, which is
+        // where the Studio hangs off as a sibling folder.
         let repo = Path::new(env!("CARGO_MANIFEST_DIR"))
             .parent()
-            .expect("src-tauri always hangs off the repo root");
-        let expected = repo.join("sim/app/target/debug").join(EXE);
+            .and_then(Path::parent)
+            .expect("src-tauri hangs off desktop/, and desktop/ off the repo root");
+        let expected = repo.join("simulationstudio/app/target/debug").join(EXE);
 
         if !expected.is_file() {
             // With nothing built there is nothing to find, and failing the test

@@ -1,8 +1,8 @@
 ﻿# Compila el motor de simulacion en Windows.
 #
-#   .\sim\build.ps1              configura y compila
-#   .\sim\build.ps1 -Clean       borra la cache de CMake antes
-#   .\sim\build.ps1 -Smoke       compila y corre 500 pasos de fisica
+#   .\simulationstudio\build.ps1              configura y compila
+#   .\simulationstudio\build.ps1 -Clean       borra la cache de CMake antes
+#   .\simulationstudio\build.ps1 -Smoke       compila y corre 500 pasos de fisica
 #
 # Existe este script porque el build a mano tiene tres trampas:
 #
@@ -24,11 +24,15 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$repo = Split-Path -Parent $PSScriptRoot
-$sim  = Join-Path $repo "sim"
+# El script vive DENTRO de la carpeta que compila, y esa carpeta se llama
+# distinto segun donde este: simulationstudio/ en el repositorio, sim/ en una
+# instalacion, que es como viaja dentro del paquete. Por eso se parte de
+# $PSScriptRoot y no de un nombre: asi los dos sitios funcionan igual.
+$sim  = $PSScriptRoot
+$repo = Split-Path -Parent $sim
 
 # --- Localizar el entorno conda ---------------------------------------
-# El orden es el mismo que usa la app (sim/app/src/supervisor.rs): primero lo
+# El orden es el mismo que usa la app (app/src/supervisor.rs): primero lo
 # que se pide a mano, luego el entorno que este activo, y solo despues los
 # sitios por defecto. CONDA_PREFIX no es un lujo: en CI el entorno lo instala
 # setup-miniconda en su propia ruta, y sin esa linea este script no encuentra
@@ -44,7 +48,7 @@ $condaEnv = $candidatos |
   Where-Object { $_ -and (Test-Path (Join-Path $_ "Library\lib\cmake\gz-sim")) } |
   Select-Object -First 1
 if (-not $condaEnv) {
-  throw "No se encontro el entorno 'mars-sim'. Crealo con: conda env create -f sim\environment.yml"
+  throw "No se encontro el entorno 'mars-sim'. Crealo con: conda env create -f simulationstudio\environment.yml"
 }
 
 # --- Localizar MSVC ---------------------------------------------------

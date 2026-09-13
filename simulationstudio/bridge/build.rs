@@ -2,7 +2,7 @@
 //!
 //! # 1. Constantes del protocolo
 //!
-//! `sim/protocol/topics.toml` dice de sí mismo que es la fuente única de verdad
+//! `../protocol/topics.toml` dice de sí mismo que es la fuente única de verdad
 //! y que "nadie escribe un nombre de tópico a mano en el código". Esto lo hace
 //! cierto del lado de Rust: lee el manifiesto en tiempo de compilación y emite
 //! las constantes. Renombrar un tópico en el manifiesto rompe la compilación
@@ -42,7 +42,7 @@ fn main() {
     aliasar_librerias();
 }
 
-/// Traduce sim/protocol/topics.toml a constantes de Rust.
+/// Traduce ../protocol/topics.toml a constantes de Rust.
 fn generar_protocolo() {
     let manifiesto = Path::new(env!("CARGO_MANIFEST_DIR")).join("../protocol/topics.toml");
     println!("cargo:rerun-if-changed={}", manifiesto.display());
@@ -52,7 +52,7 @@ fn generar_protocolo() {
     let doc: toml::Value = texto.parse().expect("topics.toml no es TOML válido");
 
     let mut out = String::from(
-        "// GENERADO por build.rs desde sim/protocol/topics.toml. No editar.\n",
+        "// GENERADO por build.rs desde simulationstudio/protocol/topics.toml. No editar.\n",
     );
 
     let s = |k: &str| doc[k].as_str().expect("campo de texto").to_string();

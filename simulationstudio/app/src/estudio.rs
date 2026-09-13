@@ -290,7 +290,7 @@ pub struct CampoInfo {
     pub sistema: String,
 }
 
-/// Donde mars-desktop instala las canchas 3D (`src-tauri/src/assets3d.rs`).
+/// Donde mars-desktop instala las canchas 3D (`desktop/src-tauri/src/assets3d.rs`).
 fn dir_assets_dashboard() -> Option<PathBuf> {
     let base = std::env::var("APPDATA")
         .map(PathBuf::from)

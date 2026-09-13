@@ -20,8 +20,14 @@ use crate::platform::{self, Edition};
 
 /// Repository the releases are downloaded from. It can be pointed elsewhere
 /// with MARS_RELEASES_REPO, which is what tests and forks use.
+///
+/// It used to be `Imcab/mars-desktop`. That repository now holds the whole
+/// ecosystem --- the dashboard, the Studio, the installer --- and was renamed
+/// along with it. GitHub redirects the old name, but an installer that depends
+/// on a redirect breaks the day somebody creates a repository with the freed-up
+/// name, and what breaks is every user's update check.
 pub fn repo() -> String {
-    std::env::var("MARS_RELEASES_REPO").unwrap_or_else(|_| "Imcab/mars-desktop".to_string())
+    std::env::var("MARS_RELEASES_REPO").unwrap_or_else(|_| "Imcab/Mars-frc".to_string())
 }
 
 /// One installable file, already resolved for this platform.
