@@ -14,10 +14,10 @@ One GitHub Pages site, built by [`.github/workflows/pages.yml`](../.github/workf
 
 | URL | What |
 |---|---|
-| `https://stz-robotics.github.io/Mars-frc/Mars.json` | **The vendordep.** `jsonUrl` points here; this is what WPILib re-reads on "Check for updates". |
-| `https://stz-robotics.github.io/Mars-frc/maven/` | **The maven repository.** Gradle resolves `com.stzteam.mars:Mars` out of here. |
-| `https://stz-robotics.github.io/Mars-frc/api/` | The Javadoc. |
-| `https://stz-robotics.github.io/Mars-frc/` | The documentation (MkDocs, from `docs/`). |
+| `https://stz-robotics.github.io/Mars/Mars.json` | **The vendordep.** `jsonUrl` points here; this is what WPILib re-reads on "Check for updates". |
+| `https://stz-robotics.github.io/Mars/maven/` | **The maven repository.** Gradle resolves `com.stzteam.mars:Mars` out of here. |
+| `https://stz-robotics.github.io/Mars/api/` | The Javadoc. |
+| `https://stz-robotics.github.io/Mars/` | The documentation (MkDocs, from `docs/`). |
 
 The first two are written into the `vendordeps/Mars.json` of every robot project
 that has MARS installed. They are not ours to move once published: a team that
@@ -68,61 +68,50 @@ classpath. `check-vendordep.mjs` fails if it ever moves.
 one-way-door property as the URLs above. Nothing here can verify it; the check
 script prints it as a note so it is at least visible.
 
-## Retiring STZ-Robotics/Mars
+## The repository this used to live in
 
-This library used to live at `STZ-Robotics/Mars`, whose GitHub Pages served
-**both** the vendordep and the maven repository — the Javadoc at the root,
-`Mars.json` next to it, `maven/` underneath. Development has moved here. The old
-repository has not finished its job, and the order of what remains matters.
+The library was published from a separate repository that also lived at
+`STZ-Robotics/Mars`, whose GitHub Pages served the Javadoc at the root with
+`Mars.json` beside it and `maven/` underneath. Development moved here, and for a
+while this repository was called `Mars-frc` — which meant the vendordep had to
+change URL, and a vendordep that changes URL has to drag every already-installed
+robot project along with it.
 
-The two are now siblings in the same organisation, one letter apart in the URL,
-which is a good way to act on the wrong one. `STZ-Robotics/Mars` is the one
-being retired; `STZ-Robotics/Mars-frc` is this repository.
+**Renaming this repository to `Mars` deleted that problem instead of solving
+it.** The URL every installed project already has written in its
+`vendordeps/Mars.json` —
 
-**1. Deploy this site first.** Both new URLs have to answer before anything
-points at them.
-
-**2. Cut a bridge release.** Done: **1.6.7**, which is 1.6.6 with no code change
-at all — it exists only to carry a number. WPILib's "Check for updates" compares
-versions, so an identical one is reported as already up to date and migrates
-nobody, no matter what else changed in the file. That is the whole reason a
-URL-only migration still needs a release.
-
-**3. One last commit in the old repository**, replacing its `Mars.json` with:
-
-```json
-{
-  "fileName": "Mars.json",
-  "name": "Mars",
-  "version": "1.6.7",
-  "frcYear": "2026",
-  "uuid": "8b9c1d2e-3f4a-5b6c-7d8e-9f0a1b2c3d4e",
-  "mavenUrls": [
-    "https://stz-robotics.github.io/Mars-frc/maven/",
-    "https://Imcab.github.io/FORGEmini/maven/"
-  ],
-  "jsonUrl": "https://stz-robotics.github.io/Mars-frc/Mars.json",
-  "javaDependencies": [
-    { "groupId": "com.stzteam.mars", "artifactId": "Mars", "version": "1.6.7" },
-    { "groupId": "com.stzteam.forgemini", "artifactId": "ForgeMini", "version": "1.1.2" }
-  ],
-  "cppDependencies": [],
-  "jniDependencies": []
-}
+```
+https://stz-robotics.github.io/Mars/Mars.json
+https://stz-robotics.github.io/Mars/maven/
 ```
 
-Same uuid, new `jsonUrl`, new maven — and note the old maven is deliberately
-**not** in the list: it will never carry 1.6.7, so leaving it in only buys a 404
-on every resolve. Its frozen copies of 1.6.0 … 1.6.6 keep serving the projects
-that never update, which is a different thing and needs no URL here.
+— is now the URL this repository serves. `lib/maven/` carries every version the
+old site carried and one more (1.6.0 … 1.6.7), and the jars are byte-identical:
+checked 1.6.0, 1.6.3 and 1.6.6 against the old site before the rename. So a team
+that never touches anything keeps resolving, and a team that hits "Check for
+updates" is offered 1.6.7 at the same address it always used.
 
-This file is the **only** channel that exists for telling an already-installed
-project that the library moved: a team updates once against the old URL and
-lands here permanently. Let its own `publish.yml` deploy it one final time.
+Nothing had to be migrated, and nothing had to be announced.
 
-**4. Then archive it — do not delete it.** An archived repository keeps serving
-Pages read-only, so its frozen `maven/` (1.6.0 … 1.6.6) keeps resolving for
-every project that never updates. Deleting it takes the maven down with it, and
-frees the name `STZ-Robotics/Mars`: whoever claims it next inherits a Pages URL
-that other people's builds still fetch from. Archiving also stops its Actions,
-which is why step 3 comes first.
+### What that cost, and what to remember
+
+1.6.7 exists because of the plan that is no longer needed: it is 1.6.6 with no
+code change, cut to carry a version number higher than the one installed, since
+WPILib's "Check for updates" compares versions and reports an equal one as
+already up to date. It is a perfectly ordinary release now.
+
+Two things are worth keeping in mind, because they are the reason this worked:
+
+- **A Pages URL follows the repository name.** Renaming a repository moves its
+  site, which is exactly why the rename could reclaim the old address — and
+  exactly why renaming this one again would break every installed project at
+  once. The name `Mars` is now load-bearing.
+- **`Mars-frc` must never be created again.** Binaries already released have
+  that slug compiled into them (see `installer/src/manifest.rs`) and reach this
+  repository through GitHub's rename redirect. A new repository claiming the
+  freed name would intercept them.
+
+`check-vendordep.mjs` derives the expected Pages URL from `GITHUB_REPOSITORY`
+and fails when the declared URLs name a different repository than the one
+publishing them, so a future rename cannot ship quietly — it stops the deploy.

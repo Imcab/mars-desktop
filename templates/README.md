@@ -47,8 +47,13 @@ team that has not updated, and there is no way to reach them.
 
 So: they stay. Archive them when it is clear nothing in the wild still clones
 them, and even then archiving keeps them readable — it is deleting that breaks
-people. The same reasoning, and the same conclusion, as `STZ-Robotics/Mars` in
-[`lib/README.md`](../lib/README.md).
+people.
+
+The library got out of the same bind a different way, because its addresses were
+Pages URLs and a Pages URL follows the repository name: renaming this repository
+to `Mars` reclaimed the exact address the old one served, so nothing had to move.
+That trick does not apply here. A `git clone` URL is the repository, and there is
+no third name to reclaim — see [`lib/README.md`](../lib/README.md).
 
 While they are up, they should not drift from what is here. They are also what
 GitHub's "Use this template" button offers, which is a perfectly good way to

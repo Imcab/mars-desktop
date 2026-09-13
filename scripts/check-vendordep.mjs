@@ -31,7 +31,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..")
 // Where the site this repository publishes serves the two things a robot
 // project asks for. If GitHub Pages ever moves, these move with it -- and the
 // old ones have to keep answering, see lib/README.md.
-const PAGES = "https://stz-robotics.github.io/Mars-frc"
+const PAGES = "https://stz-robotics.github.io/Mars"
 
 /**
  * The Pages URL the repository we are running in would actually serve.

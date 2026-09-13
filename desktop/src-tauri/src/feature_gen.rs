@@ -359,7 +359,7 @@ fn readme_source(config: &FeatureWizardConfig, pages: Option<&str>) -> String {
     ));
     out.push_str("- `generated/FeatureConstants.java` — rewritten by Gradle on every `compileJava`; don't edit it.\n");
     out.push_str("- `MarsFeature.json` — the descriptor MARS reads. `version` here drives both the Maven artifact and the installer.\n");
-    out.push_str("\n---\n\nGenerated with the MARS Desktop feature wizard from the template in [Mars-frc](https://github.com/STZ-Robotics/Mars-frc/tree/main/templates/feature).\n");
+    out.push_str("\n---\n\nGenerated with the MARS Desktop feature wizard from the template in [Mars](https://github.com/STZ-Robotics/Mars/tree/main/templates/feature).\n");
     out
 }
 

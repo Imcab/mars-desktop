@@ -28,7 +28,7 @@ use crate::platform::{self, Edition};
 /// and what breaks is every user's update check, on a machine nobody here can
 /// reach.
 pub fn repo() -> String {
-    std::env::var("MARS_RELEASES_REPO").unwrap_or_else(|_| "STZ-Robotics/Mars-frc".to_string())
+    std::env::var("MARS_RELEASES_REPO").unwrap_or_else(|_| "STZ-Robotics/Mars".to_string())
 }
 
 /// One installable file, already resolved for this platform.

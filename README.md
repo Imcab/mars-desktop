@@ -13,7 +13,7 @@ three repositories.
 ## Installing
 
 Download the installer for your system from the
-[latest release](https://github.com/STZ-Robotics/Mars-frc/releases/latest) and run it.
+[latest release](https://github.com/STZ-Robotics/Mars/releases/latest) and run it.
 It fetches everything else.
 
 | System | File |
@@ -51,7 +51,7 @@ cd installer          && cargo run
 
 ## The published site
 
-One GitHub Pages site, at `https://stz-robotics.github.io/Mars-frc/`, built by
+One GitHub Pages site, at `https://stz-robotics.github.io/Mars/`, built by
 [`.github/workflows/pages.yml`](.github/workflows/pages.yml):
 
 | Path | What |
@@ -66,9 +66,11 @@ project that has MARS installed, so they are not ours to move once published.
 `node scripts/check-vendordep.mjs` refuses a `Mars.json` that promises a version
 `lib/maven/` does not carry, and the workflow runs it before uploading anything.
 
-The library used to be published from `STZ-Robotics/Mars`; that repository is
-being retired, and the order in which that has to happen — including why it gets
-archived and never deleted — is in [`lib/README.md`](lib/README.md).
+The library used to be published from a separate repository at the same address
+this one now answers on. Renaming this repository to `Mars` reclaimed that
+address, so no robot project ever had to be migrated — which also makes the name
+load-bearing. [`lib/README.md`](lib/README.md) explains what that means before
+anybody renames anything again.
 
 ### One folder, two names
 
