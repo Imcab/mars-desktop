@@ -139,12 +139,19 @@ export default function Sidebar({
               levantar el simulador y después conectarse a él en modo sim.
               La etiqueta va corta ("Simulation Studio") porque el sidebar
               colapsa a 250px y el nombre completo no entra en una línea.
-              El icono es la marca del Studio (mss.svg), la misma que lleva su
-              ejecutable: antes apuntaba a "simulator.svg", que no existe en
-              public/icons, y la fila caía siempre al robot de tabler. */}
+              El icono es la marca del Studio, la misma que lleva su ejecutable:
+              antes apuntaba a "simulator.svg", que no existe en public/icons, y
+              la fila caía siempre al robot de tabler.
+
+              Es un PNG de 128px y no el mss.svg que había antes. Ese SVG pesaba
+              5.6 MB —4.4 MB de trazados más un raster de 5988x5887 embebido en
+              base64— para dibujarse aquí a 16 px, y como public/ se copia a
+              dist/ y dist/ se empotra en el binario, cada equipo se lo
+              descargaba entero. SidebarIcon lo pide con <img src>, así que el
+              formato le da igual. */}
           {HAS_SIM_STUDIO && (
             <TreeLeaf
-              svg="mss.svg"
+              svg="mss.png"
               icon="ti-robot"
               iconColor={simDisponible === false ? "var(--icon-tree-disabled, var(--icon-tree))" : "var(--icon-tree)"}
               label="Simulation Studio"
