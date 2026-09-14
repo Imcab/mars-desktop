@@ -8,6 +8,11 @@
 		"sourceMap": true,
 		"rootDir": "src",
 		"strict": true,   /* enable all strict type-checking options */
+		/* @msgpack/msgpack ships one set of declarations for browsers and Node, so
+		   they mention DOM types (BufferSource) that a Node-only `lib` does not
+		   have. Our own sources are still fully checked; this only stops us type
+		   checking other people's published declarations. */
+		"skipLibCheck": true,
 		/* Additional Checks */
 		// "noImplicitReturns": true, /* Report error when not all code paths in function return a value. */
 		// "noFallthroughCasesInSwitch": true, /* Report errors for fallthrough cases in switch statement. */

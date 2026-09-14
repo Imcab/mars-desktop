@@ -1,0 +1,9 @@
+<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+  <!-- The planet: a disc with two bands, so it still reads as Mars and not as a
+       generic circle at 16px, which is the size this is actually seen at. -->
+  <circle cx="10.5" cy="13.5" r="6.5" fill="currentColor"/>
+  <path d="M4.6 10.8h11.8M5.2 16.6h10.6" stroke="#000" stroke-opacity="0.45" stroke-width="1.1" fill="none"/>
+  <!-- The orbit, cut where it passes behind the planet, and the moon on it. -->
+  <path d="M15.6 6.4a5.4 5.4 0 1 0-5.1 8.9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+  <circle cx="18.2" cy="5.2" r="2" fill="currentColor"/>
+</svg>

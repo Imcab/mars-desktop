@@ -1,0 +1,373 @@
+{
+	"MARS subsystem": {
+		"prefix": ["marssubsystem", "ModularSubsystem"],
+		"description": "A ModularSubsystem with its builder, its colour codes and its nested Telemetry, laid out the way the MARS Desktop wizard generates one.",
+		"body": [
+			"public class ${1:Arm} extends ModularSubsystem<${1:Arm}IO.${1:Arm}Inputs, ${1:Arm}IO> {",
+			"",
+			"  public static final ModuleColorCode ${2:ON_TARGET} =",
+			"      ModuleColorCode.solid(\"${2:ON_TARGET}\", Severity.OK, Color.k${3:DarkGreen}, \"${4:At the setpoint.}\");",
+			"",
+			"  public ${1:Arm}(${1:Arm}IO io) {",
+			"    super(",
+			"        SubsystemBuilder.<${1:Arm}IO.${1:Arm}Inputs, ${1:Arm}IO>setup()",
+			"            .key(KeyManager.${5:ARM_KEY})",
+			"            .hardware(io, new ${1:Arm}IO.${1:Arm}Inputs())",
+			"            .request(${6:null})",
+			"            .telemetry(new ${1:Arm}Telemetry()));",
+			"  }",
+			"",
+			"  @Override",
+			"  public void absolutePeriodic(${1:Arm}IO.${1:Arm}Inputs inputs) {",
+			"    $0",
+			"  }",
+			"",
+			"  public static class ${1:Arm}Telemetry extends Telemetry<${1:Arm}IO.${1:Arm}Inputs> {",
+			"",
+			"    @Override",
+			"    public void telemeterize(${1:Arm}IO.${1:Arm}Inputs data) {",
+			"      NetworkIO.set(KeyManager.${5:ARM_KEY}, \"Timestamp\", data.timestamp);",
+			"    }",
+			"  }",
+			"}"
+		]
+	},
+
+	"MARS IO interface": {
+		"prefix": ["marsio", "IOInterface"],
+		"description": "An IO interface with its Inputs nested inside it, which is the shape the rest of MARS expects.",
+		"body": [
+			"@Fallback",
+			"public interface ${1:Arm}IO extends IO<${1:Arm}IO.${1:Arm}Inputs> {",
+			"",
+			"  public static class ${1:Arm}Inputs extends Data<${1:Arm}Inputs> {",
+			"",
+			"    public double ${2:position} = 0;",
+			"  }",
+			"",
+			"  public void applyOutput(double volts);",
+			"  $0",
+			"}"
+		]
+	},
+
+	"MARS IO implementation": {
+		"prefix": ["marsioimpl", "IOReal"],
+		"description": "One hardware layer behind an IO interface: the real one, the simulated one or the fallback.",
+		"body": [
+			"public class ${1:Arm}IO${2|Real,Sim,Fallback|} implements ${1:Arm}IO {",
+			"",
+			"  public ${1:Arm}IO${2|Real,Sim,Fallback|}() {",
+			"    $0",
+			"  }",
+			"",
+			"  @Override",
+			"  public void updateInputs(${1:Arm}IO.${1:Arm}Inputs inputs) {",
+			"  }",
+			"",
+			"  @Override",
+			"  public void applyOutput(double volts) {",
+			"  }",
+			"}"
+		]
+	},
+
+	"MARS request": {
+		"prefix": ["marsrequest", "Request"],
+		"description": "A Request: one loop of logic over a data snapshot and the hardware actor, returning the status it left the subsystem in.",
+		"body": [
+			"public class ${1:SetAngle} implements Request<${2:Arm}IO.${2:Arm}Inputs, ${2:Arm}IO> {",
+			"",
+			"  private final double ${3:target};",
+			"",
+			"  public ${1:SetAngle}(double ${3:target}) {",
+			"    this.${3:target} = ${3:target};",
+			"  }",
+			"",
+			"  @Override",
+			"  public ActionStatus apply(${2:Arm}IO.${2:Arm}Inputs parameters, ${2:Arm}IO actor) {",
+			"    $0",
+			"    return ActionStatus.ok();",
+			"  }",
+			"}"
+		]
+	},
+
+	"MARS request transition check": {
+		"prefix": ["marsissamerequest"],
+		"description": "Override isSameRequest so two runs of the same request with different setpoints log as separate transitions.",
+		"body": [
+			"@Override",
+			"public boolean isSameRequest(Request<${1:D}, ${2:A}> other) {",
+			"  return other instanceof ${3:SetAngle} o && o.${4:target} == this.${4:target};",
+			"}",
+			"$0"
+		]
+	},
+
+	"MARS telemetry": {
+		"prefix": ["marstelemetry", "Telemetry"],
+		"description": "A Telemetry broadcaster: the one place a subsystem's data reaches NetworkTables.",
+		"body": [
+			"public static class ${1:Arm}Telemetry extends Telemetry<${1:Arm}IO.${1:Arm}Inputs> {",
+			"",
+			"  @Override",
+			"  public void telemeterize(${1:Arm}IO.${1:Arm}Inputs data) {",
+			"    NetworkIO.set(KeyManager.${2:ARM_KEY}, \"Timestamp\", data.timestamp);",
+			"    NetworkIO.set(KeyManager.${2:ARM_KEY}, \"${3:Position}\", data.${4:position});",
+			"    $0",
+			"  }",
+			"}"
+		]
+	},
+
+	"MARS subsystem builder": {
+		"prefix": ["marsbuilder", "SubsystemBuilder"],
+		"description": "The builder chain a ModularSubsystem passes to super().",
+		"body": [
+			"super(",
+			"    SubsystemBuilder.<${1:Arm}IO.${1:Arm}Inputs, ${1:Arm}IO>setup()",
+			"        .key(KeyManager.${2:ARM_KEY})",
+			"        .hardware(io, new ${1:Arm}IO.${1:Arm}Inputs())",
+			"        .request(${3:null})",
+			"        .telemetry(new ${1:Arm}Telemetry()));",
+			"$0"
+		]
+	},
+
+	"MARS IO injection": {
+		"prefix": ["marsinject", "createIO"],
+		"description": "Injector.createIO: picks the fallback, the real layer or the simulated one from the Manifest's run mode.",
+		"body": [
+			"${1:Arm}IO ${2:armIO} = Injector.createIO(",
+			"    Manifest.${3:HAS_ARM},",
+			"    ${1:Arm}IOFallback::new,",
+			"    ${1:Arm}IOReal::new,",
+			"    ${1:Arm}IOSim::new);",
+			"$0"
+		]
+	},
+
+	"MARS node injection": {
+		"prefix": ["marsinjectnode", "createNode"],
+		"description": "Injector.createNode: a real node when the Manifest enables it, a FallbackNode when it does not.",
+		"body": [
+			"Node<${1:VisionMessage}> ${2:vision} = Injector.createNode(",
+			"    Manifest.${3:HAS_VISION},",
+			"    ${4:VisionNode}::new);",
+			"$0"
+		]
+	},
+
+	"MARS status": {
+		"prefix": ["marsstatus", "ActionStatus"],
+		"description": "The ActionStatus a request returns. Anything but ok() also drives the module's colour code and the alert registry.",
+		"body": [
+			"return ActionStatus.${1|ok(),warning(\"\"),error(\"\"),of()|};",
+			"$0"
+		]
+	},
+
+	"MARS colour code": {
+		"prefix": ["marscolorcode", "ModuleColorCode"],
+		"description": "A module colour code: the name, severity, LED colour and message template one status can report.",
+		"body": [
+			"public static final ModuleColorCode ${1:ON_TARGET} =",
+			"    ModuleColorCode.solid(\"${1:ON_TARGET}\", Severity.${2|OK,WARNING,ERROR,CRITICAL|}, Color.k${3:DarkGreen}, \"${4:At the setpoint.}\");",
+			"$0"
+		]
+	},
+
+	"MARS key constant": {
+		"prefix": ["marskey", "KeyManager"],
+		"description": "A NetworkTables table name as a constant. Every subsystem and every NetworkIO.set should address the table through one of these, not through a repeated literal.",
+		"body": [
+			"public static final String ${1:ARM}_KEY = \"${2:Arm}\";",
+			"$0"
+		]
+	},
+
+	"MARS blackboard key": {
+		"prefix": ["marsblackboardkey", "BlackboardKey"],
+		"description": "A typed blackboard key. The type argument and the Class object have to agree; nothing checks that they do.",
+		"body": [
+			"public static final BlackboardKey<${1:Double}> ${2:TARGET_POSE} =",
+			"    new BlackboardKey<>(\"${3:targetPose}\", ${1:Double}.class);",
+			"$0"
+		]
+	},
+
+	"MARS blackboard write": {
+		"prefix": ["marsblackboardwrite"],
+		"description": "Publish a value on the blackboard, for any subsystem that asks for that key.",
+		"body": [
+			"Blackboard.getInstance().write(KeyManager.${1:TARGET_POSE}, ${2:value});",
+			"$0"
+		]
+	},
+
+	"MARS blackboard read": {
+		"prefix": ["marsblackboardread"],
+		"description": "Read a blackboard value. It is an Optional because nothing guarantees anybody wrote it this loop.",
+		"body": [
+			"Blackboard.getInstance().read(KeyManager.${1:TARGET_POSE}).ifPresent(${2:value} -> {",
+			"  $0",
+			"});"
+		]
+	},
+
+	"MARS node": {
+		"prefix": ["marsnode", "Node"],
+		"description": "A Node: something that produces a message every loop without owning hardware, such as vision or an odometry fuser.",
+		"body": [
+			"public class ${1:Vision}Node extends Node<${1:Vision}Message> {",
+			"",
+			"  public ${1:Vision}Node(Consumer<${1:Vision}Message> topicPublisher) {",
+			"    super(\"${1:Vision}\", new ${1:Vision}Message(), topicPublisher);",
+			"  }",
+			"",
+			"  @Override",
+			"  protected void processInformation() {",
+			"    $0",
+			"  }",
+			"}"
+		]
+	},
+
+	"MARS node message": {
+		"prefix": ["marsnodemessage", "NodeMessage"],
+		"description": "The payload a Node publishes, and how it puts itself on NetworkTables.",
+		"body": [
+			"public class ${1:Vision}Message extends NodeMessage<${1:Vision}Message> {",
+			"",
+			"  public ${2:double} ${3:latency} = ${4:0};",
+			"",
+			"  @Override",
+			"  public void telemeterize(String tableName) {",
+			"    NetworkIO.set(tableName, \"${5:Latency}\", ${3:latency});",
+			"    $0",
+			"  }",
+			"}"
+		]
+	},
+
+	"MARS service": {
+		"prefix": ["marsservice", "Service"],
+		"description": "A Service: a request/reply pair, for the things that are asked once rather than run every loop.",
+		"body": [
+			"public class ${1:PathPlanning}Service implements Service<${1:PathPlanning}Query, ${1:PathPlanning}Reply> {",
+			"  $0",
+			"}"
+		]
+	},
+
+	"MARS robot container": {
+		"prefix": ["marscontainer", "IRobotContainer"],
+		"description": "The container Robot.java drives: where subsystems get built and where nodes get their tick.",
+		"body": [
+			"public class RobotContainer implements IRobotContainer {",
+			"",
+			"  public RobotContainer() {",
+			"    $0",
+			"  }",
+			"",
+			"  @Override",
+			"  public void updateNodes() {",
+			"  }",
+			"",
+			"  public Command getAutonomousCommand() {",
+			"    return Commands.print(\"No autonomous command configured\");",
+			"  }",
+			"",
+			"  @Override",
+			"  public TestRoutine getTestRoutine() {",
+			"    return new EmptyTest();",
+			"  }",
+			"}"
+		]
+	},
+
+	"MARS binding": {
+		"prefix": ["marsbinding", "Binding"],
+		"description": "A Binding: controller wiring kept out of the container, so the two can change independently.",
+		"body": [
+			"public class ${1:Driver}Bindings implements Binding {",
+			"",
+			"  private final ControllerOI oi;",
+			"  private final ${2:Arm} ${3:arm};",
+			"",
+			"  public ${1:Driver}Bindings(ControllerOI oi, ${2:Arm} ${3:arm}) {",
+			"    this.oi = oi;",
+			"    this.${3:arm} = ${3:arm};",
+			"  }",
+			"",
+			"  @Override",
+			"  public void bind() {",
+			"    oi.getActionButtons().bottom().onTrue(${3:arm}.runRequestUntilDone(() -> new ${4:SetAngle}(${5:0})));",
+			"    $0",
+			"  }",
+			"}"
+		]
+	},
+
+	"MARS run request": {
+		"prefix": ["marsrunrequest", "runRequest"],
+		"description": "Turn a request into a command: runRequest holds it until interrupted, runRequestUntilDone ends when the status reports done.",
+		"body": [
+			"${1:arm}.${2|runRequest,runRequestUntilDone|}(() -> new ${3:SetAngle}(${4:0}))$0"
+		]
+	},
+
+	"MARS test routine": {
+		"prefix": ["marstest", "TestRoutine"],
+		"description": "A TestRoutine: the systems check that runs in test mode, with the assertions MARS gives you.",
+		"body": [
+			"public class ${1:Arm}Test extends TestRoutine {",
+			"",
+			"  private final ${1:Arm} ${2:arm};",
+			"",
+			"  public ${1:Arm}Test(${1:Arm} ${2:arm}) {",
+			"    this.${2:arm} = ${2:arm};",
+			"  }",
+			"",
+			"  @Override",
+			"  public Command getRoutineCommand() {",
+			"    return run(new ${3:SetAngle}(${4:0}), ${2:arm})",
+			"        .andThen(delay(${5:1.0}))",
+			"        .andThen(assertLessThan(() -> ${2:arm}.${6:error}(), ${7:0.05}, \"${8:the arm did not reach the setpoint}\"));",
+			"  }",
+			"}"
+		]
+	},
+
+	"MARS tunable": {
+		"prefix": ["marstunable", "@Tunable"],
+		"description": "A field the dashboard can write back to. The topic is the subsystem's table plus the key, or the field name when no key is given.",
+		"body": [
+			"@Tunable(key = \"${1:kP}\")",
+			"public double ${2:kP} = ${3:0.0};",
+			"$0"
+		]
+	},
+
+	"MARS signal": {
+		"prefix": ["marssignal", "@Signal"],
+		"description": "A method whose return value is published every loop. The topic is the subsystem's table plus the key, or the method name.",
+		"body": [
+			"@Signal(key = \"${1:velocity}\")",
+			"public double ${2:getVelocity}() {",
+			"  return ${3:0.0};",
+			"}",
+			"$0"
+		]
+	},
+
+	"MARS publish": {
+		"prefix": ["marspublish", "NetworkIO"],
+		"description": "Publish one value on NetworkTables, addressed through a key constant rather than a repeated literal.",
+		"body": [
+			"NetworkIO.set(KeyManager.${1:ARM_KEY}, \"${2:Position}\", ${3:value});",
+			"$0"
+		]
+	}
+}

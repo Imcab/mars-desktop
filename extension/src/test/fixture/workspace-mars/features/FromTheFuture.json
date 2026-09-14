@@ -1,0 +1,8 @@
+{
+  "featureId": "FromTheFuture",
+  "name": "From The Future",
+  "version": "2.0.0",
+  "author": "Test",
+  "description": "Declares a MARS core requirement this project cannot satisfy, so the compatibility check has something to find.",
+  "marsCoreRequired": ">=9.0.0"
+}

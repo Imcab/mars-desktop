@@ -35,7 +35,10 @@ async function main() {
 		sourcesContent: false,
 		platform: 'node',
 		outfile: 'dist/extension.js',
-		external: ['vscode'],
+		// `ws` requires these two inside a try/catch and falls back to pure JS when
+		// they are missing, which is what happens here: left external, the require
+		// fails at runtime and is caught, exactly as the library expects.
+		external: ['vscode', 'bufferutil', 'utf-8-validate'],
 		logLevel: 'silent',
 		plugins: [
 			/* add to the end of plugins array */
