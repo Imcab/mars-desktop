@@ -477,7 +477,7 @@ mod tests {
     fn descarga_un_paquete_real() {
         let url = concat!(
             "https://github.com/Mechanical-Advantage/AdvantageScopeAssets",
-            "/releases/download/default-assets-v2/Robot_2026FRCKitBotV1.zip",
+            "/releases/download/default-assets-v2/Robot_2026FRCKitBotV2.zip",
         );
 
         let bytes = tauri::async_runtime::block_on(async {
@@ -489,7 +489,7 @@ mod tests {
         assert!(bytes.len() > 100_000, "el .zip llegó vacío: {} bytes", bytes.len());
 
         let root = temp_root("descarga");
-        let folder = extract_zip_into(bytes.to_vec(), "Robot_2026FRCKitBotV1", &root).unwrap();
+        let folder = extract_zip_into(bytes.to_vec(), "Robot_2026FRCKitBotV2", &root).unwrap();
         let dir = root.join(&folder);
         assert!(dir.join("config.json").exists());
         assert!(dir.join("model.glb").exists());

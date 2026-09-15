@@ -201,15 +201,15 @@ const ASSETS_RELEASE =
  * redistribución conservando el aviso de copyright — ver ASSET_LICENSE_NOTE.
  */
 export const ASSET_CATALOG: CatalogEntry[] = [
-  { key: "Field3d_2026FRCFieldV1", label: "2026 Field (Rebuilt)", kind: "field", url: `${ASSETS_RELEASE}/Field3d_2026FRCFieldV1.zip`, approxBytes: 4_871_831 },
-  { key: "Field3d_2025FRCFieldWeldedV2", label: "2025 Field (welded)", kind: "field", url: `${ASSETS_RELEASE}/Field3d_2025FRCFieldWeldedV2.zip`, approxBytes: 9_000_000 },
-  { key: "Field3d_2025FRCFieldAndyMarkV2", label: "2025 Field (AndyMark)", kind: "field", url: `${ASSETS_RELEASE}/Field3d_2025FRCFieldAndyMarkV2.zip`, approxBytes: 9_000_000 },
-  { key: "Field3d_2024FRCFieldV3", label: "2024 Field (Crescendo)", kind: "field", url: `${ASSETS_RELEASE}/Field3d_2024FRCFieldV3.zip`, approxBytes: 8_000_000 },
-  { key: "Field3d_2023FRCFieldV4", label: "2023 Field (Charged Up)", kind: "field", url: `${ASSETS_RELEASE}/Field3d_2023FRCFieldV4.zip`, approxBytes: 7_000_000 },
-  { key: "Field3d_2022FRCFieldV3", label: "2022 Field (Rapid React)", kind: "field", url: `${ASSETS_RELEASE}/Field3d_2022FRCFieldV3.zip`, approxBytes: 7_000_000 },
-  { key: "Robot_2026FRCKitBotV1", label: "2026 KitBot", kind: "robot", url: `${ASSETS_RELEASE}/Robot_2026FRCKitBotV1.zip`, approxBytes: 2_000_000 },
-  { key: "Robot_2025FRCKitBotV2", label: "2025 KitBot", kind: "robot", url: `${ASSETS_RELEASE}/Robot_2025FRCKitBotV2.zip`, approxBytes: 2_000_000 },
-  { key: "Robot_CrabBotV3", label: "CrabBot (swerve demo)", kind: "robot", url: `${ASSETS_RELEASE}/Robot_CrabBotV3.zip`, approxBytes: 2_000_000 },
+  { key: "Field3d_2026FRCFieldV2", label: "2026 Field (Rebuilt)", kind: "field", url: `${ASSETS_RELEASE}/Field3d_2026FRCFieldV2.zip`, approxBytes: 4_872_257 },
+  { key: "Field3d_2025FRCFieldWeldedV3", label: "2025 Field (welded)", kind: "field", url: `${ASSETS_RELEASE}/Field3d_2025FRCFieldWeldedV3.zip`, approxBytes: 3_787_054 },
+  { key: "Field3d_2025FRCFieldAndyMarkV3", label: "2025 Field (AndyMark)", kind: "field", url: `${ASSETS_RELEASE}/Field3d_2025FRCFieldAndyMarkV3.zip`, approxBytes: 3_789_831 },
+  { key: "Field3d_2024FRCFieldV4", label: "2024 Field (Crescendo)", kind: "field", url: `${ASSETS_RELEASE}/Field3d_2024FRCFieldV4.zip`, approxBytes: 6_042_932 },
+  { key: "Field3d_2023FRCFieldV5", label: "2023 Field (Charged Up)", kind: "field", url: `${ASSETS_RELEASE}/Field3d_2023FRCFieldV5.zip`, approxBytes: 4_205_657 },
+  { key: "Field3d_2022FRCFieldV4", label: "2022 Field (Rapid React)", kind: "field", url: `${ASSETS_RELEASE}/Field3d_2022FRCFieldV4.zip`, approxBytes: 4_235_138 },
+  { key: "Robot_2026FRCKitBotV2", label: "2026 KitBot", kind: "robot", url: `${ASSETS_RELEASE}/Robot_2026FRCKitBotV2.zip`, approxBytes: 8_575_189 },
+  { key: "Robot_2025FRCKitBotV3", label: "2025 KitBot", kind: "robot", url: `${ASSETS_RELEASE}/Robot_2025FRCKitBotV3.zip`, approxBytes: 6_490_790 },
+  { key: "Robot_CrabBotV4", label: "CrabBot (swerve demo)", kind: "robot", url: `${ASSETS_RELEASE}/Robot_CrabBotV4.zip`, approxBytes: 17_533_783 },
 ]
 
 export const ASSET_LICENSE_NOTE =
